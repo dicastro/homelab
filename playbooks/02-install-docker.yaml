@@ -1,0 +1,179 @@
+---
+- name: Install Docker and configure log rotation
+  hosts: docker_hosts
+  become: no
+  vars:
+    docker_log_options:
+      max_size: "10m"
+      max_file: "3"
+    docker_login_file: "docker-config.json"  # Path to your login config file on Ansible control node
+    docker_login_dest: "/root/.docker/config.json"  # Destination on remote hosts
+    docker_certs_dir: "/etc/docker/certs"
+    certificate_tools_path: "{{ output_path }}/{{ cluster_name }}"
+  vars_files:
+    - vars/common.yaml
+    - "{{ inventory_dir }}/secrets.yaml"
+
+  tasks:
+    - name: Gather Ubuntu distribution facts
+      ansible.builtin.setup:
+        gather_subset:
+          - distribution
+
+    - name: Install required packages
+      ansible.builtin.apt:
+        update_cache: yes
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        state: present
+
+    - name: Ensure keyrings directory exists
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Check if Docker GPG key is already installed
+      stat:
+        path: /etc/apt/keyrings/docker-archive-keyring.gpg
+      register: docker_gpg_key
+
+    - name: Download Docker's GPG key
+      get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /tmp/docker-archive-keyring.gpg
+        mode: '0644'
+      when: not docker_gpg_key.stat.exists
+
+    - name: Convert GPG key to binary format
+      command:
+        cmd: gpg --dearmor -o /etc/apt/keyrings/docker-archive-keyring.gpg /tmp/docker-archive-keyring.gpg
+      args:
+        creates: /etc/apt/keyrings/docker-archive-keyring.gpg
+
+    - name: Remove temporary GPG key
+      file:
+        path: /tmp/docker-archive-keyring.gpg
+        state: absent
+
+    - name: Set up the Docker stable repository
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu {{ ansible_facts.lsb.codename | lower  }} stable"
+        state: present
+
+    - name: Install Docker and Docker Compose
+      ansible.builtin.apt:
+        update_cache: yes
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - docker-compose
+          - containerd.io
+        state: present
+
+    - name: Install Docker Compose plugin
+      ansible.builtin.apt:
+        name: docker-compose-plugin
+        state: present
+
+    - name: Generate signed certificate for Docker
+      ansible.builtin.command:
+        cmd: >
+          python scripts/generate-signed-certificate.py
+          --base-path {{ certificate_tools_path }}
+          --ca-alias {{ cluster_name }}
+          --ca-cn "{{ cluster_name }} root ca"
+          --signed-alias "docker-daemon-{{ inventory_hostname }}"
+          --signed-cn "{{ inventory_hostname }}.{{ cluster_domain }}"
+          --signed-san-ip {{ ansible_host }}
+          --output-format ansible
+      register: signed_cert_output
+      changed_when: (signed_cert_output.stdout | from_json).changed
+      delegate_to: localhost
+
+    - name: Parse output of signed certificate generation
+      ansible.builtin.set_fact:
+        ca_crt_path: "{{ (signed_cert_output.stdout | from_json).details['ca-crt-path'] }}"
+        signed_crt_path: "{{ (signed_cert_output.stdout | from_json).details['signed-crt-path'] }}"
+        signed_key_path: "{{ (signed_cert_output.stdout | from_json).details['signed-key-path'] }}"
+      changed_when: false
+
+    - name: Ensure Docker certificates directory exists
+      ansible.builtin.file:
+        path: "{{ docker_certs_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Copy certificates to Docker directory
+      ansible.builtin.copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        mode: '0644'
+      loop:
+        - { src: "{{ ca_crt_path }}", dest: "{{ docker_certs_dir }}/ca.pem" }
+        - { src: "{{ signed_crt_path }}", dest: "{{ docker_certs_dir }}/server-crt.pem" }
+        - { src: "{{ signed_key_path }}", dest: "{{ docker_certs_dir }}/server-key.pem" }
+      notify: Restart Docker
+
+    - name: Configure Docker log rotation and TLS
+      copy:
+        dest: /etc/docker/daemon.json
+        content: |
+          {
+            "log-driver": "json-file",
+            "log-opts": {
+              "max-size": "{{ docker_log_options.max_size }}",
+              "max-file": "{{ docker_log_options.max_file }}"
+            },
+            "tls": true,
+            "tlsverify": true,
+            "tlscacert": "{{ docker_certs_dir }}/ca.pem",
+            "tlscert": "{{ docker_certs_dir }}/server-crt.pem",
+            "tlskey": "{{ docker_certs_dir }}/server-key.pem",
+            "hosts": ["tcp://0.0.0.0:2376", "unix:///var/run/docker.sock"]
+          }
+      notify: Restart Docker
+
+    - name: Create docker configuration folder
+      ansible.builtin.file:
+        path: "{{ docker_login_dest | dirname }}"
+        state: directory
+        mode: '0755'
+
+    - name: Copy Docker login configuration
+      ansible.builtin.copy:
+        src: "{{ docker_login_file }}"
+        dest: "{{ docker_login_dest }}"
+        owner: root
+        group: root
+        mode: "0600"
+
+    - name: Ensure Docker override directory exists
+      ansible.builtin.file:
+        path: /etc/systemd/system/docker.service.d
+        state: directory
+        mode: "0755"
+
+    - name: Configure Docker systemd override
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/docker.service.d/override.conf
+        content: |
+          [Service]
+          ExecStart=
+          ExecStart=/usr/bin/dockerd --containerd=/run/containerd/containerd.sock
+        mode: "0644"
+      notify: Restart Docker
+
+    - name: Reload systemd to apply changes
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+  handlers:
+    - name: Restart Docker
+      service:
+        name: docker
+        state: restarted

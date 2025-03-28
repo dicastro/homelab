@@ -1,0 +1,38 @@
+---
+- name: Create homelab VMs
+  hosts: vms
+  gather_facts: no
+  become: no
+  vars:
+    vmssshkey_path: "{{ output_path }}/{{ cluster_name }}"
+  vars_files:
+    - vars/common.yaml
+    - "{{ inventory_dir }}/secrets.yaml"
+
+  tasks:
+    - name: Create vm
+      ansible.builtin.command:
+        cmd: >
+          python scripts/create-vm.py
+          --base-path {{ vmssshkey_path }}
+          --id {{ vm.id }}
+          --name "{{ vm.name }}"
+          --ram  {{ vm.ram }}
+          --cores {{ vm.cores }}
+          --disk-size {{ vm.disk_size }}
+          --storage {{ vm.storage }}
+          --user {{ vm.user }}
+          --upgrade-packages
+          --ubuntu-codename {{ vm.ubuntu_codename }}
+          --no-dhcp
+          --ip {{ ansible_host }}
+          --gateway-ip {{ vm.gateway_ip }}
+          --dns-servers "{{ vm.dns_servers }}"
+          --proxmox-host {{ proxmox_host }}
+          --proxmox-user {{ proxmox_user }}
+          --output-format ansible
+      register: create_vm_output
+      changed_when: (create_vm_output.stdout | from_json).changed
+      delegate_to: localhost
+      environment:
+        PROXMOX_PASSWORD: "{{ proxmox_password }}"

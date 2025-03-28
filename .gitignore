@@ -1,1 +1,16 @@
 .idea
+.venv
+.ssh
+
+inventories/prod/*
+!inventories/prod/group_vars
+!inventories/prod/.gitkeep
+
+playbooks/files/docker-config.json
+!playbooks/files/.gitkeep
+
+output
+
+.vault-pass
+
+notes.md

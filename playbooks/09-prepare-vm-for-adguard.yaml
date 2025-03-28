@@ -1,0 +1,43 @@
+---
+- name: Prepare Ubuntu VM for AdGuard Home DNS
+  hosts: dns
+  become: no
+  tasks:
+    - name: Ensure the directory for systemd resolved configuration exists
+      file:
+        path: /etc/systemd/resolved.conf.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Create the adguardhome.conf file
+      copy:
+        dest: /etc/systemd/resolved.conf.d/adguardhome.conf
+        content: |
+          [Resolve]
+          DNS=127.0.0.1
+          DNSStubListener=no
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Restart systemd-resolved
+
+    - name: Backup existing resolv.conf if it exists and hasn't been backed up
+      command: mv /etc/resolv.conf /etc/resolv.conf.backup
+      args:
+        creates: /etc/resolv.conf.backup
+
+    - name: Link new resolv.conf to systemd-resolved
+      file:
+        src: /run/systemd/resolve/resolv.conf
+        dest: /etc/resolv.conf
+        state: link
+        force: yes
+      notify: Restart systemd-resolved
+
+  handlers:
+    - name: Restart systemd-resolved
+      systemd:
+        name: systemd-resolved
+        state: restarted
