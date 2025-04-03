@@ -2,7 +2,6 @@
 
 ## TODOs
 
-- remove repos `homelab-ansible-playbooks`, `homelab-proxmox-tools` and `homelab-certificate-tools`
 - adapt backup folders/files in `download.sh` once the project structure is definitive
 
 
