@@ -116,7 +116,7 @@
           -F "TLSCertFile=@{{ certs_base_path }}/signed/docker-daemon-{{ item }}/docker-daemon-{{ item }}_crt.pem;type=application/pkix-cert" \
           -F "TLSKeyFile=@{{ certs_base_path }}/signed/docker-daemon-{{ item }}/docker-daemon-{{ item }}_key.pem;type=application/x-pem-file"
       delegate_to: localhost
-      with_items: "{{ groups['docker_hosts'] | difference([inventory_hostname]) }}"
+      with_items: "{{ groups['docker_hosts'] }}"
       when: item not in existing_endpoints_map
       # We use curl because ansible.builtin.uri does not preserve line endings in multipart file uploads
 
