@@ -1,0 +1,117 @@
+---
+- name: Deploy AdGuardHome to Portainer
+  hosts: management
+  gather_facts: false
+  become: no
+  vars:
+    portainer_api_url: "http://localhost:9000/api"
+    portainer_api_url_remote: "http://{{ hostvars[inventory_hostname].ansible_host }}:9000/api"
+    portainer_destination_endpoint: "dns"
+    portainer_stack_name: "adguardhome"
+    docker_compose_template: "./docker-compose-templates/adguardhome-compose.yaml.j2"
+    docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/adguardhome-compose.yaml"
+    destination_host: "dns"
+    adguardhome_volumes:
+      - "/storage/adguard/work:/opt/adguardhome/work"
+      - "/storage/adguard/conf:/opt/adguardhome/conf"
+  vars_files:
+    - vars/common.yaml
+    - "{{ inventory_dir }}/docker-images.yaml"
+    - "{{ inventory_dir }}/secrets.yaml"
+
+  tasks:
+    - name: Wait for Portainer API to be ready
+      ansible.builtin.uri:
+        url: "http://localhost:9000/api/status"
+        method: GET
+        return_content: yes
+        status_code: 200
+      register: portainer_status
+      until: portainer_status.status == 200
+      retries: 10
+      delay: 5
+
+    - name: Obtain Portainer API token
+      ansible.builtin.uri:
+        url: "{{ portainer_api_url }}/auth"
+        method: POST
+        body_format: json
+        body:
+          username: "{{ portainer_admin_user }}"
+          password: "{{ portainer_admin_password }}"
+        headers:
+          Content-Type: "application/json"
+        status_code: 200
+      register: portainer_auth
+
+    - name: Set API token as a fact
+      ansible.builtin.set_fact:
+        portainer_api_token: "{{ portainer_auth.json.jwt }}"
+
+    - name: Get existing Portainer endpoints
+      ansible.builtin.uri:
+        url: "{{ portainer_api_url }}/endpoints"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ portainer_api_token }}"
+        return_content: true
+      register: existing_endpoints
+
+    - name: Parse existing endpoints
+      ansible.builtin.set_fact:
+        existing_endpoints_map: "{{ existing_endpoints.json | items2dict(key_name='Name', value_name='Id') }}"
+
+    - name: Existing endpoints
+      ansible.builtin.debug:
+        var: existing_endpoints_map
+
+    - name: Set endpoint ID from name
+      ansible.builtin.set_fact:
+        endpoint_id: "{{ existing_endpoints_map[portainer_destination_endpoint] }}"
+
+    - name: Endpoint selected
+      ansible.builtin.debug:
+        var: endpoint_id
+
+    - name: Ensure required directories exist on the destination host
+      ansible.builtin.file:
+        path: "{{ item.split(':')[0] }}"
+        state: directory
+        mode: "0755"
+      loop: "{{ adguardhome_volumes }}"
+      delegate_to: "{{ destination_host }}"
+
+    - name: Ensure the base directory for docker-compose output exists
+      ansible.builtin.file:
+        path: "{{ docker_compose_output | dirname }}"
+        state: directory
+        mode: "0755"
+      delegate_to: "localhost"
+
+    - name: Generate adguardhome-compose.yml from template
+      ansible.builtin.template:
+        src: "{{ docker_compose_template }}"
+        dest: "{{ docker_compose_output }}"
+        mode: "0644"
+      delegate_to: "localhost"
+      register: compose_file
+
+    - name: Check if stack exists in Portainer
+      ansible.builtin.uri:
+        url: "{{ portainer_api_url }}/stacks?filters={\"Name\":[\"{{ portainer_stack_name }}\"]}"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ portainer_api_token }}"
+          Content-Type: "application/json"
+        status_code: 200
+      register: stack_check
+
+    - name: Deploy stack to Portainer (Create or Update)
+      ansible.builtin.shell: |
+        # Using curl instead of ansible.builtin.uri to ensure correct file uploads
+        curl -X POST "{{ portainer_api_url_remote }}/stacks/create/standalone/file?endpointId={{ endpoint_id }}" \
+          -H "Authorization: Bearer {{ portainer_api_token }}" \
+          -F "Name={{ portainer_stack_name }}" \
+          -F "file=@{{ docker_compose_output }}" \
+      delegate_to: localhost
+      when: compose_file.changed or stack_check.json | length == 0

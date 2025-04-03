@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  adguardhome:
+    image: {{ adguardhome_image }}
+    container_name: adguardhome
+    restart: unless-stopped
+    volumes:
+{% for volume in adguardhome_volumes %}
+      - "{{ volume }}"
+{% endfor %}
+    ports:
+      - "53:53"
+      - "80:80/tcp"
+      - "443:443"
+      - "3000:3000/tcp"
+      - "853:853"
+      - "784:784/udp"
+      - "8853:8853/udp"
+      - "5443:5443"
