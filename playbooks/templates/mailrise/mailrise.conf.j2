@@ -1,0 +1,18 @@
+configs:
+  telegram:
+    urls:
+      - {{ mailrise_telegram_url }}
+    mailrise:
+      title_template: "Urgent: ${subject}"
+      body_template: "${body}"
+      body_format: html
+
+smtp:
+  auth:
+    basic:
+      {{ mailrise_admin_user }}: {{ mailrise_admin_password }}
+
+tls:
+  mode: starttls
+  certfile: /home/mailrise/mailrise_crt.pem
+  keyfile: /home/mailrise/mailrise_key.pem

@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  mailrise:
+    image: {{ mailrise_image }}
+    container_name: mailrise
+    restart: unless-stopped
+    volumes:
+{% for volume in mailrise_volumes %}
+      - "{{ volume }}"
+{% endfor %}
+    ports:
+      - "8025:8025"
