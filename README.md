@@ -2,6 +2,8 @@
 
 ## TODOs
 
+- create a specific telegram chatbot in order to receive notifications
+- update configuration of mailrise in order to use the correct telegram chatbot
 - adapt backup folders/files in `download.sh` once the project structure is definitive
 
 
