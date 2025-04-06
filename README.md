@@ -2,6 +2,7 @@
 
 ## TODOs
 
+- split playbook `03-deploy-portainer.yaml` into `03-a-deploy-portainer.yaml` and `03-b-update-portainer-endpoints.yaml`
 - create a specific telegram chatbot in order to receive notifications
 - update configuration of mailrise in order to use the correct telegram chatbot
 - adapt backup folders/files in `download.sh` once the project structure is definitive
@@ -42,7 +43,13 @@ The custom docker image is based in the official python one and adds an *ansible
 
 ### Run the python container
 
-Run the script `run-python-container.sh`
+Run the script `run-python-container.sh` (`run-python-container.cmd` from windows)
+
+> From windows there´s still a permission issues. The mapped volume has 777 permissions by default.
+>   - Ansible is ignoring `ansible.cfg` configuration file
+>   - The file `.vault-pass` is considered a script as it has execution permission
+>   - The keys in `vmssshkey` cannot be used
+> So the first time running the container `chmod 644 ansible.cfg .vault-pass` and `chmod 600 output/**/vmssshkey/*` has to be run.
 
 ### Create a python virtual environment:
 

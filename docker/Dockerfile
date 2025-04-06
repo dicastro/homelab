@@ -9,5 +9,10 @@ ARG GID
 RUN groupadd -g ${GID} ansible && \
     useradd -m -u ${UID} -g ansible ansible
 
+VOLUME /home/ansible/work
+
+RUN mkdir -p /home/ansible/work && \
+    chown -R ansible:ansible /home/ansible/work
+
 # Set the user as the default
 USER ansible

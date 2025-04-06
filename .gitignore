@@ -1,6 +1,7 @@
 .idea
 .venv
 .ssh
+!.ssh/.gitkeep
 
 inventories/prod/*
 !inventories/prod/group_vars

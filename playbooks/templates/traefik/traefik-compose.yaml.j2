@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  traefik:
+    image: {{ traefik_image }}
+    container_name: traefik
+    restart: unless-stopped
+    volumes:
+{% for volume in traefik_volumes %}
+      - "{{ volume }}"
+{% endfor %}
+    ports:
+      - "443:443"
