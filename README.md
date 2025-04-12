@@ -2,6 +2,7 @@
 
 ## TODOs
 
+- create a script to send via ssh all files that are not pushed to git for security reasons
 - create role to deploy in portainer (checking if stack exists) (at least `04-b-deploy-adguard.yaml`, `05-deploy-mailrise.yaml` and `07-deploy-traefik.yaml` could benefit from it)
 - create role to add dns rewrite (for the moment only `07-deploy-traefik.yaml` will benefit from it, but in the future there will be more playbooks with that necessity)
 - create role for bcrypt password generation (at least `04-b-deploy-adguard.yaml` and `07-deploy-traefik.yaml` could benefit from it)
