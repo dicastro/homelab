@@ -5,9 +5,20 @@ services:
     image: {{ traefik_image }}
     container_name: traefik
     restart: unless-stopped
+    environment:
+      - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 {% for volume in traefik_volumes %}
-      - "{{ volume }}"
+      - "{{ volume.src }}:{{ volume.dst }}"
 {% endfor %}
     ports:
+      - "80:80"
       - "443:443"
+      - "8080:8080"
+    networks:
+      - frontend
+
+networks:
+  frontend:
+    external: true

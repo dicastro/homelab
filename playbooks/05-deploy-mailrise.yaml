@@ -192,10 +192,14 @@
         status_code: 200
       register: portainer_stacks_response
 
+    - name: Get stack matching name
+      set_fact:
+        stack_candidates: "{{ portainer_stacks_response.json | selectattr('Name', 'equalto', portainer_stack_name) | list }}"
+
     - name: Find stack by name
       set_fact:
-        portainer_stack_found: "{{ portainer_stacks_response.json | selectattr('Name', 'equalto', portainer_stack_name) | first }}"
-      when: portainer_stacks_response.json | length > 0
+        portainer_stack_found: "{{ stack_candidates[0] }}"
+      when: stack_candidates | length > 0
 
     - name: Set fact if stack exists
       ansible.builtin.set_fact:

@@ -1,4 +1,13 @@
+log:
+  level: DEBUG
+
+api:
+  dashboard: true
+  insecure: true
+
 entryPoints:
+  web:
+    address: ":80"
   websecure:
     address: ":443"
 
@@ -14,6 +23,9 @@ certificatesResolvers:
           - "8.8.8.8:53"
 
 providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
   file:
     directory: /dynamic
     watch: true

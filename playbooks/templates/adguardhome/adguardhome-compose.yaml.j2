@@ -4,6 +4,12 @@ services:
   adguardhome:
     image: {{ adguardhome_image }}
     container_name: adguardhome
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.adguardhome.rule=Host(`{{ adguardhome_subdomain }}.{{ cluster_domain }}`)"
+      - "traefik.http.routers.adguardhome.entrypoints=websecure"
+      - "traefik.http.routers.adguardhome.tls.certresolver=letsencrypt"
+      - "traefik.http.services.adguardhome.loadbalancer.server.port={{ frontend_port }}"
     restart: unless-stopped
     volumes:
 {% for volume in adguardhome_volumes %}
@@ -12,13 +18,10 @@ services:
     ports:
       - "53:53/tcp"
       - "53:53/udp"
-      - "80:80/tcp"
-      - "443:443/tcp"
-      - "443:443/udp"
       - "3000:3000/tcp"
-      - "853:853/tcp"
-      - "853:853/udp"
-      - "784:784/udp"
-      - "8853:8853/udp"
-      - "5443:5443/tcp"
-      - "5443:5443/udp"
+    networks:
+      - frontend
+
+networks:
+  frontend:
+    external: true

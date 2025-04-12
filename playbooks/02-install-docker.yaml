@@ -172,6 +172,12 @@
       ansible.builtin.systemd:
         daemon_reload: yes
 
+    - name: Create a Docker network
+      community.docker.docker_network:
+        name: frontend
+        driver: bridge
+        state: present
+
   handlers:
     - name: Restart Docker
       service:

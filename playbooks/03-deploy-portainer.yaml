@@ -3,10 +3,12 @@
   hosts: management
   become: no
   vars:
+    frontend_port: "9000"
     portainer_data_path: "/storage/portainer/data"
     portainer_container_name: "portainer"
     portainer_api_url: "http://localhost:9000/api"
     portainer_api_url_remote: "http://{{ hostvars[inventory_hostname].ansible_host }}:9000/api"
+    portainer_subdomain: "portainer"
     certs_base_path: "{{ output_path }}/{{ cluster_name }}/certificates"
   vars_files:
     - vars/common.yaml
@@ -33,6 +35,12 @@
         volumes:
           - "{{ portainer_data_path }}:/data"
         state: started
+        labels:
+          "traefik.enable": "true"
+          "traefik.http.routers.portainer.rule": "Host(`{{ portainer_subdomain }}.{{ cluster_domain }}`)"
+          "traefik.http.routers.portainer.entrypoints": "websecure"
+          "traefik.http.routers.portainer.tls.certresolver": "letsencrypt"
+          "traefik.http.services.portainer.loadbalancer.server.port": "{{ frontend_port }}"
 
     - name: Wait for Portainer API to be ready
       ansible.builtin.uri:
