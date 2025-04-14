@@ -44,50 +44,9 @@
     - "{{ inventory_dir }}/secrets.yaml"
 
   tasks:
-    - name: Wait for Portainer API to be ready
-      ansible.builtin.uri:
-        url: "http://localhost:9000/api/status"
-        method: GET
-        return_content: yes
-        status_code: 200
-      register: portainer_status
-      until: portainer_status.status == 200
-      retries: 10
-      delay: 5
-
-    - name: Obtain Portainer API token
-      ansible.builtin.uri:
-        url: "{{ portainer_api_url }}/auth"
-        method: POST
-        body_format: json
-        body:
-          username: "{{ portainer_admin_user }}"
-          password: "{{ portainer_admin_password }}"
-        headers:
-          Content-Type: "application/json"
-        status_code: 200
-      register: portainer_auth
-
-    - name: Set API token as a fact
-      ansible.builtin.set_fact:
-        portainer_api_token: "{{ portainer_auth.json.jwt }}"
-
-    - name: Get existing Portainer endpoints
-      ansible.builtin.uri:
-        url: "{{ portainer_api_url }}/endpoints"
-        method: GET
-        headers:
-          Authorization: "Bearer {{ portainer_api_token }}"
-        return_content: true
-      register: existing_endpoints
-
-    - name: Parse existing endpoints
-      ansible.builtin.set_fact:
-        existing_endpoints_map: "{{ existing_endpoints.json | items2dict(key_name='Name', value_name='Id') }}"
-
-    - name: Existing endpoints
-      ansible.builtin.debug:
-        var: existing_endpoints_map
+    - name: Get portainer token and endpoints map
+      ansible.builtin.include_role:
+        name: get-portainer-token-and-endpoints-map
 
     - name: Ensure required directories exist on the destination host
       ansible.builtin.file:
