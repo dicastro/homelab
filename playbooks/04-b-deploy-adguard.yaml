@@ -7,10 +7,6 @@
     service_name: "adguardhome"
     destination_host: "dns"
     frontend_port: "3000"
-    portainer_api_url: "http://localhost:9000/api"
-    portainer_api_url_remote: "http://{{ hostvars[inventory_hostname].ansible_host }}:9000/api"
-    portainer_destination_endpoint: "{{ destination_host }}"
-    portainer_stack_name: "{{ service_name }}"
     docker_compose_template: "adguardhome/adguardhome-compose.yaml.j2"
     docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/adguardhome-compose.yaml"
     adguardhome_subdomain: "dns"
@@ -30,14 +26,6 @@
     - name: Get portainer token and endpoints map
       ansible.builtin.include_role:
         name: get-portainer-token-and-endpoints-map
-
-    - name: Set endpoint ID from name
-      ansible.builtin.set_fact:
-        endpoint_id: "{{ portainer_endpoints_map[portainer_destination_endpoint] }}"
-
-    - name: Endpoint selected
-      ansible.builtin.debug:
-        var: endpoint_id
 
     - name: Ensure required directories exist on the destination host
       ansible.builtin.file:
@@ -101,35 +89,11 @@
       delegate_to: "{{ destination_host }}"
       when: adguardhome_config_file.changed
 
-    - name: Check if stack exists in Portainer
-      ansible.builtin.uri:
-        url: "{{ portainer_api_url }}/stacks?filters={\"EndpointId\":{{ endpoint_id }}}"
-        method: GET
-        headers:
-          Authorization: "Bearer {{ portainer_api_token }}"
-          Content-Type: "application/json"
-        status_code: 200
-      register: portainer_stacks_response
-
-    - name: Get stack matching name
-      set_fact:
-        stack_candidates: "{{ portainer_stacks_response.json | selectattr('Name', 'equalto', portainer_stack_name) | list }}"
-
-    - name: Find stack by name
-      set_fact:
-        portainer_stack_found: "{{ stack_candidates[0] }}"
-      when: stack_candidates | length > 0
-
-    - name: Set fact if stack exists
-      ansible.builtin.set_fact:
-        stack_exists: "{{ portainer_stack_found is defined }}"
-
-    - name: Deploy stack to Portainer (Create or Update)
-      ansible.builtin.shell: |
-        # Using curl instead of ansible.builtin.uri to ensure correct file uploads
-        curl -X POST "{{ portainer_api_url_remote }}/stacks/create/standalone/file?endpointId={{ endpoint_id }}" \
-          -H "Authorization: Bearer {{ portainer_api_token }}" \
-          -F "Name={{ portainer_stack_name }}" \
-          -F "file=@{{ docker_compose_output }}" \
-      delegate_to: localhost
-      when: adguardhome_compose_file.changed or not stack_exists
+    - name: Deploy AdGuard Home through Portainer
+      ansible.builtin.include_role:
+        name: deploy-through-portainer
+      vars:
+        portainer_endpoint_name: "{{ destination_host }}"
+        portainer_stack_name: "{{ service_name }}"
+        service_compose_file: "{{ docker_compose_output }}"
+        service_compose_file_changed: "{{ adguardhome_compose_file.changed }}"

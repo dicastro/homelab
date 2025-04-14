@@ -1,7 +1,7 @@
 # Role: get-portainer-token-and-endpoints-map
 #
-# This role manages DNS rewrite rules in AdGuard Home via its HTTP API.
-# It checks if a rewrite rule exists for a given domain and adds it if missing.
+# This role authenticates with the Portainer API, retrieves existing endpoints,
+# and maps them to a dictionary keyed by their name for easy lookup.
 #
 # INPUT VARIABLES:
 # ----------------
@@ -9,8 +9,8 @@
 #
 # OUTPUT FACTS:
 # -------------
-# portainer_api_token
-# portainer_endpoints_map
+# portainer_api_token      (string)  The JWT token returned by the Portainer API after authentication
+# portainer_endpoints_map  (map)     A dictionary mapping endpoint names to their numeric IDs, e.g. { "local": 1, "remote-docker": 2 }
 
 - name: Wait for Portainer API to be ready
   ansible.builtin.uri:

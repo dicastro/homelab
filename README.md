@@ -3,7 +3,6 @@
 ## TODOs
 
 - create a script to send via ssh all files that are not pushed to git for security reasons
-- create role to deploy in portainer (checking if stack exists) (at least `04-b-deploy-adguard.yaml`, `05-deploy-mailrise.yaml` and `07-deploy-traefik.yaml` could benefit from it)
 - split playbook `03-deploy-portainer.yaml` into `03-a-deploy-portainer.yaml` and `03-b-update-portainer-endpoints.yaml`
 - create a specific telegram chatbot in order to receive notifications
 - update configuration of mailrise in order to use the correct telegram chatbot

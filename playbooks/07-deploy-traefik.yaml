@@ -7,8 +7,6 @@
     service_name: "traefik"
     frontend_port: "443"
     certificate_tools_path: "{{ output_path }}/{{ cluster_name }}"
-    portainer_api_url: "http://localhost:9000/api"
-    portainer_api_url_remote: "http://{{ hostvars[inventory_hostname].ansible_host }}:9000/api"
     docker_compose_template: "traefik/traefik-compose.yaml.j2"
     docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/traefik-compose.yaml"
     docker_hosts_list: "{{ query('inventory_hostnames', 'docker_hosts') }}"
