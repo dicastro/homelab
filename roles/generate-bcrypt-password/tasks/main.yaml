@@ -1,0 +1,77 @@
+# Role: generate-bcrypt-password
+#
+# This role generates and manages a bcrypt hash of a given plaintext password.
+# It calculates a checksum to detect if the password changed since last run.
+#
+# INPUT VARIABLES:
+# ----------------
+# password_plaintext        (string)   The plaintext password.
+# password_checksum_file    (string)   Path to store the checksum (used to detect changes).
+# password_bcrypt_file      (string)   Path to store the resulting bcrypt hash.
+#
+# OUTPUT FACTS:
+# -------------
+# password_changed          (bool)     Whether the password has changed.
+# password_bcrypt           (string)   Resulting bcrypt hash (either new or from file).
+
+
+- name: Calculate SHA256 checksum of password
+  ansible.builtin.set_fact:
+    password_checksum_current: "{{ password_plaintext | hash('sha256') }}"
+
+- name: Read stored password checksum (if any)
+  ansible.builtin.slurp:
+    src: "{{ password_checksum_file }}"
+  register: password_checksum_previous_raw
+  delegate_to: localhost
+  failed_when: false
+  changed_when: false
+
+- name: Decode stored checksum
+  ansible.builtin.set_fact:
+    password_checksum_previous: "{{ password_checksum_previous_raw.content | b64decode | trim }}"
+  when: password_checksum_previous_raw is defined and password_checksum_previous_raw.content is defined
+
+- name: Determine if password has changed
+  ansible.builtin.set_fact:
+    password_changed: "{{ password_checksum_current != password_checksum_previous | default('') }}"
+
+- name: Save password checksum to file
+  copy:
+    dest: "{{ password_checksum_file }}"
+    content: "{{ password_checksum_current }}"
+    mode: '0600'
+  when: password_changed
+  delegate_to: localhost
+
+- name: Generate bcrypt hash using Python
+  ansible.builtin.command: >
+    python3 -c "import bcrypt; print(bcrypt.hashpw(b'{{ password_plaintext }}', bcrypt.gensalt()).decode())"
+  register: password_bcrypt_result
+  when: password_changed
+  delegate_to: localhost
+
+- name: Save bcrypt hash to file
+  copy:
+    dest: "{{ password_bcrypt_file }}"
+    content: "{{ password_bcrypt_result.stdout }}"
+    mode: '0600'
+  when: password_changed
+  delegate_to: localhost
+
+- name: Read stored bcrypt hash
+  ansible.builtin.slurp:
+    src: "{{ password_bcrypt_file }}"
+  register: password_bcrypt_previous_raw
+  when: not password_changed
+  delegate_to: localhost
+
+- name: Set bcrypt result from stored value
+  ansible.builtin.set_fact:
+    password_bcrypt: "{{ password_bcrypt_previous_raw.content | b64decode | trim }}"
+  when: not password_changed
+
+- name: Set bcrypt result from generated value
+  ansible.builtin.set_fact:
+    password_bcrypt: "{{ password_bcrypt_result.stdout }}"
+  when: password_changed

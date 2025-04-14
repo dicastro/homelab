@@ -134,66 +134,18 @@
       when: traefik_config_rendered_template.changed
       loop: "{{ docker_hosts_list }}"
 
-    - name: Calculate SHA256 checksum of Traefik admin password
+    - name: Generate bcrypt password for Traefik admin password
+      ansible.builtin.include_role:
+        name: generate-bcrypt-password
+      vars:
+        password_plaintext: "{{ traefik_admin_password }}"
+        password_checksum_file: "{{ traefik_password_checksum_file }}"
+        password_bcrypt_file: "{{ traefik_password_bcrypt_file }}"
+
+    - name: Store the generated bcrypt password into a specific variable
       ansible.builtin.set_fact:
-        traefik_admin_password_checksum_current: "{{ traefik_admin_password | hash('sha256') }}"
-
-    - name: Read stored Traefik admin password checksum (if any)
-      ansible.builtin.slurp:
-        src: "{{ traefik_password_checksum_file }}"
-      register: traefik_password_checksum_stored_raw
-      delegate_to: localhost
-      failed_when: false
-      changed_when: false
-
-    - name: Decode stored checksum
-      ansible.builtin.set_fact:
-        traefik_admin_password_checksum_stored: "{{ traefik_password_checksum_stored_raw.content | b64decode | trim }}"
-      when: traefik_password_checksum_stored_raw is defined and traefik_password_checksum_stored_raw.content is defined
-
-    - name: Determine if password has changed
-      ansible.builtin.set_fact:
-        traefik_admin_password_changed: "{{ traefik_admin_password_checksum_current != traefik_admin_password_checksum_stored | default('') }}"
-
-    - name: Save password checksum to file
-      copy:
-        dest: "{{ traefik_password_checksum_file }}"
-        content: "{{ traefik_admin_password_checksum_current }}"
-        mode: '0600'
-      when: traefik_admin_password_changed
-      delegate_to: localhost
-
-    - name: Generate Traefik admin password bcrypt hash using Python directly
-      ansible.builtin.command: >
-        python3 -c "import bcrypt; print(bcrypt.hashpw(b'{{ traefik_admin_password }}', bcrypt.gensalt()).decode())"
-      register: traefik_admin_password_bcrypt_result
-      when: traefik_admin_password_changed
-      delegate_to: localhost
-
-    - name: Save Traefik admin bcrypt password to file
-      copy:
-        dest: "{{ traefik_password_bcrypt_file }}"
-        content: "{{ traefik_admin_password_bcrypt_result.stdout }}"
-        mode: '0600'
-      when: traefik_admin_password_changed
-      delegate_to: localhost
-
-    - name: Read stored bcrypt hash
-      ansible.builtin.slurp:
-        src: "{{ traefik_password_bcrypt_file }}"
-      register: traefik_password_bcrypt_stored_raw
-      when: not traefik_admin_password_changed
-      delegate_to: localhost
-
-    - name: Set traefik_admin_password_bcrypt from stored value
-      ansible.builtin.set_fact:
-        traefik_admin_password_bcrypt: "{{ traefik_password_bcrypt_stored_raw.content | b64decode | trim }}"
-      when: not traefik_admin_password_changed
-
-    - name: Set traefik_admin_password_bcrypt fact
-      ansible.builtin.set_fact:
-        traefik_admin_password_bcrypt: "{{ traefik_admin_password_bcrypt_result.stdout }}"
-      when: traefik_admin_password_changed
+        traefik_admin_password_bcrypt: "{{ password_bcrypt }}"
+        traefik_admin_password_changed: "{{ password_changed }}"
 
     - name: Generate and copy Traefik dynamic for each docker host
       include_tasks: tasks/deploy-traefik/traefik-dynamic-per-host.yaml
