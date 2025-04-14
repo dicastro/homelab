@@ -1,0 +1,43 @@
+# Role: add-dns-rewrite
+#
+# This role manages DNS rewrite rules in AdGuard Home via its HTTP API.
+# It checks if a rewrite rule exists for a given domain and adds it if missing.
+#
+# INPUT VARIABLES:
+# ----------------
+# rewrite_domain    (string)   Domain name to create the rewrite rule for.
+# rewrite_answer    (string)   The IP to use for resolving the answer.
+#
+# OUTPUT FACTS:
+# -------------
+#
+
+- name: Get AdGuard Home rewrite list
+  uri:
+    url: "{{ adguardhome_url }}/control/rewrite/list"
+    method: GET
+    headers:
+      Authorization: "Basic {{ (adguardhome_admin_user + ':' + adguardhome_admin_password) | b64encode }}"
+      Content-Type: "application/json"
+    status_code: 200
+  register: adguardhome_rewrites
+  delegate_to: dns
+
+- name: Check if rewrite already exists
+  set_fact:
+    rewrite_exists: "{{ adguardhome_rewrites.json | selectattr('domain', 'equalto', rewrite_domain) | list | length > 0 }}"
+
+- name: Add new rewrite rule if not exists
+  uri:
+    url: "{{ adguardhome_url }}/control/rewrite/add"
+    method: POST
+    headers:
+      Authorization: "Basic {{ (adguardhome_admin_user + ':' + adguardhome_admin_password) | b64encode }}"
+    body_format: json
+    body:
+      domain: "{{ rewrite_domain }}"
+      answer: "{{ rewrite_answer }}"
+    status_code: 200
+  delegate_to: dns
+  when: not rewrite_exists
+  changed_when: true

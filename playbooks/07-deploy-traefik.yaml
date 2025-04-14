@@ -15,8 +15,6 @@
     traefik_subdomain_prefix: "traefik"
     traefik_config_template: "traefik/traefik.yaml.j2"
     traefik_config_output: "{{ output_path }}/{{ cluster_name }}/configs/traefik/traefik.yaml"
-    traefik_password_checksum_file: "{{ output_path }}/{{ cluster_name }}/configs/traefik/traefik-admin-password-hash.txt"
-    traefik_password_bcrypt_file: "{{ output_path }}/{{ cluster_name }}/configs/traefik/traefik-admin-password.txt"
     traefik_dynamic_template: "traefik/traefik-dynamic.yaml.j2"
     traefik_dynamic_output: "{{ output_path }}/{{ cluster_name }}/configs/traefik"
     traefik_container_user: "traefik"
@@ -40,7 +38,6 @@
       - src: "{{ traefik_dynamic_dir }}"
         dst: "/dynamic"
         type: dir
-    adguardhome_url: "http://localhost:3000"
   vars_files:
     - vars/common.yaml
     - "{{ inventory_dir }}/docker-images.yaml"
@@ -139,8 +136,8 @@
         name: generate-bcrypt-password
       vars:
         password_plaintext: "{{ traefik_admin_password }}"
-        password_checksum_file: "{{ traefik_password_checksum_file }}"
-        password_bcrypt_file: "{{ traefik_password_bcrypt_file }}"
+        password_checksum_file: "{{ output_path }}/{{ cluster_name }}/configs/traefik/traefik-admin-password-hash.txt"
+        password_bcrypt_file: "{{ output_path }}/{{ cluster_name }}/configs/traefik/traefik-admin-password.txt"
 
     - name: Store the generated bcrypt password into a specific variable
       ansible.builtin.set_fact:

@@ -1,5 +1,5 @@
 - name: Set portainer_stack_name
-  set_fact:
+  ansible.builtin.set_fact:
     portainer_stack_name: "{{ service_name }}-{{ item }}"
 
 - name: Check if stack exists in Portainer for {{ item }}
@@ -13,11 +13,11 @@
   register: portainer_stacks_response
 
 - name: Get stack matching name
-  set_fact:
+  ansible.builtin.set_fact:
     stack_candidates: "{{ portainer_stacks_response.json | selectattr('Name', 'equalto', portainer_stack_name) | list }}"
 
 - name: Find stack by name
-  set_fact:
+  ansible.builtin.set_fact:
     portainer_stack_found: "{{ stack_candidates[0] }}"
   when: stack_candidates | length > 0
 
@@ -36,36 +36,9 @@
   delegate_to: localhost
   when: traefik_compose_file.changed or not stack_exists
 
-- name: Set portainer_stack_name
-  set_fact:
+- name: Add DNS rewrite for {{ item }}
+  ansible.builtin.include_role:
+    name: add-dns-rewrite
+  vars:
     rewrite_domain: "{{ traefik_subdomain_prefix }}-{{ item }}.{{ cluster_domain }}"
-
-- name: Get AdGuard Home rewrite list for {{ item }}
-  uri:
-    url: "{{ adguardhome_url }}/control/rewrite/list"
-    method: GET
-    headers:
-      Authorization: "Basic {{ (adguardhome_admin_user + ':' + adguardhome_admin_password) | b64encode }}"
-      Content-Type: "application/json"
-    status_code: 200
-  register: adguardhome_rewrites
-  delegate_to: dns
-
-- name: Check if rewrite already exists for {{ item }}
-  set_fact:
-    rewrite_exists: "{{ adguardhome_rewrites.json | selectattr('domain', 'equalto', rewrite_domain) | list | length > 0 }}"
-
-- name: Add new rewrite rule if not exists for {{ item }}
-  uri:
-    url: "{{ adguardhome_url }}/control/rewrite/add"
-    method: POST
-    headers:
-      Authorization: "Basic {{ (adguardhome_admin_user + ':' + adguardhome_admin_password) | b64encode }}"
-    body_format: json
-    body:
-      domain: "{{ rewrite_domain }}"
-      answer: "{{ hostvars[item].ansible_host }}"
-    status_code: 200
-  delegate_to: dns
-  when: not rewrite_exists
-  changed_when: true
+    rewrite_answer: "{{ hostvars[item].ansible_host }}"

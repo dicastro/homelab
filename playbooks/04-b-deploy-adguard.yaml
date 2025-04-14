@@ -16,8 +16,6 @@
     adguardhome_subdomain: "dns"
     adguardhome_config_template: "adguardhome/adguardhome-config.yaml.j2"
     adguardhome_config_output: "{{ output_path }}/{{ cluster_name }}/configs/adguardhome/adguardhome-config.yaml"
-    adguardhome_password_checksum_file: "{{ output_path }}/{{ cluster_name }}/configs/adguardhome/adguardhome-admin-password-hash.txt"
-    adguardhome_password_bcrypt_file: "{{ output_path }}/{{ cluster_name }}/configs/adguardhome/adguardhome-admin-password.txt"
     adguardhome_storage_base_dir: "/storage/adguardhome"
     adguardhome_config_dir: "{{ adguardhome_storage_base_dir }}/conf"
     adguardhome_volumes:
@@ -117,8 +115,8 @@
         name: generate-bcrypt-password
       vars:
         password_plaintext: "{{ adguardhome_admin_password }}"
-        password_checksum_file: "{{ adguardhome_password_checksum_file }}"
-        password_bcrypt_file: "{{ adguardhome_password_bcrypt_file }}"
+        password_checksum_file: "{{ output_path }}/{{ cluster_name }}/configs/adguardhome/adguardhome-admin-password-hash.txt"
+        password_bcrypt_file: "{{ output_path }}/{{ cluster_name }}/configs/adguardhome/adguardhome-admin-password.txt"
 
     - name: Store the generated bcrypt password into a specific variable
       ansible.builtin.set_fact:
