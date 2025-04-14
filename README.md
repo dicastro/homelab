@@ -2,6 +2,10 @@
 
 ## TODOs
 
+- create playbook to deploy apprise
+- create playbook to deploy homer dashboard
+- create playbook to deploy actualbudgets
+- create playbook to deploy uptime kuma
 - create a script to send via ssh all files that are not pushed to git for security reasons
 - create a specific telegram chatbot in order to receive notifications
 - update configuration of mailrise in order to use the correct telegram chatbot
