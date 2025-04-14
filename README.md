@@ -3,7 +3,6 @@
 ## TODOs
 
 - create a script to send via ssh all files that are not pushed to git for security reasons
-- split playbook `03-deploy-portainer.yaml` into `03-a-deploy-portainer.yaml` and `03-b-update-portainer-endpoints.yaml`
 - create a specific telegram chatbot in order to receive notifications
 - update configuration of mailrise in order to use the correct telegram chatbot
 - adapt backup folders/files in `download.sh` once the project structure is definitive

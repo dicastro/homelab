@@ -1,0 +1,72 @@
+---
+- name: Deploy portainer
+  hosts: management
+  become: no
+  vars:
+    frontend_port: "9000"
+    portainer_data_path: "/storage/portainer/data"
+    portainer_container_name: "portainer"
+    portainer_subdomain: "portainer"
+  vars_files:
+    - vars/common.yaml
+    - "{{ inventory_dir }}/docker-images.yaml"
+    - "{{ inventory_dir }}/secrets.yaml"
+
+  tasks:
+    - name: Ensure Portainer data directory exists
+      ansible.builtin.file:
+        path: "{{ portainer_data_path }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Ensure Portainer container is running
+      community.docker.docker_container:
+        name: "{{ portainer_container_name }}"
+        image: "{{ portainer_image }}"
+        restart_policy: unless-stopped
+        ports:
+          - "9000:9000"
+          - "8000:8000"
+        volumes:
+          - "{{ portainer_data_path }}:/data"
+        state: started
+        labels:
+          "traefik.enable": "true"
+          "traefik.http.routers.portainer.rule": "Host(`{{ portainer_subdomain }}.{{ cluster_domain }}`)"
+          "traefik.http.routers.portainer.entrypoints": "websecure"
+          "traefik.http.routers.portainer.tls.certresolver": "letsencrypt"
+          "traefik.http.services.portainer.loadbalancer.server.port": "{{ frontend_port }}"
+
+    - name: Wait for Portainer API to be ready
+      ansible.builtin.uri:
+        url: "{{ portainer_api_url }}/status"
+        method: GET
+        return_content: yes
+        status_code: 200
+      register: portainer_status
+      until: portainer_status.status == 200
+      retries: 10
+      delay: 5
+
+    - name: Check if Portainer admin user is already initialized
+      ansible.builtin.uri:
+        url: "{{ portainer_api_url }}/users/admin/check"
+        method: GET
+        return_content: yes
+        status_code: [ 204, 404 ]
+      register: admin_check
+
+    - name: Initialize Portainer admin user if not set
+      ansible.builtin.uri:
+        url: "{{ portainer_api_url }}/users/admin/init"
+        method: POST
+        body_format: json
+        body:
+          username: "{{ portainer_admin_user }}"
+          password: "{{ portainer_admin_password }}"
+        headers:
+          Content-Type: "application/json"
+        status_code: 200
+      when: admin_check.status == 404
