@@ -1,2 +1,6 @@
-ansible
-bcrypt # enable encryption using bcrypt
+ansible==11.3.0
+bcrypt==4.3.0 # enable encryption using bcrypt
+
+# requirements of syn-private-files.py
+paramiko==3.5.1
+scp==0.15.0
