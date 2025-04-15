@@ -9,12 +9,13 @@ from scp import SCPClient
 
 EXPECTED_DIR_NAME = "homelab"
 
-FILES_TO_SYNC = [
-    "inventories/prod",                      # all YAML files
-    "output",                                # entire directory recursively
-    "playbooks/files/docker-config.json",    # specific file
-    ".vault-pass",                           # specific file
-    "notes.md"                               # specific file
+CONTENTS_TO_SYNC = [
+    (".ssh", True)                                 # folder
+    ("inventories/prod", True),                    # folder
+    ("output", True),                              # folder
+    ("playbooks/files/docker-config.json", False), # file
+    (".vault-pass", False),                        # file
+    ("notes.md", False),                           # file
 ]
 
 
@@ -43,24 +44,29 @@ def connect_ssh(host, port, username, password=None, key_file=None):
 
 def push_files(ssh, remote_base_path):
     with SCPClient(ssh.get_transport()) as scp:
-        for rel_path in FILES_TO_SYNC:
+        for rel_path, is_dif in CONTENTS_TO_SYNC:
             full_path = Path(rel_path)
-            if full_path.is_dir():
-                scp.put(str(full_path), recursive=True, remote_path=os.path.join(remote_base_path, rel_path))
-            elif full_path.is_file():
-                scp.put(str(full_path), remote_path=os.path.join(remote_base_path, rel_path))
+            remote_path = os.path.join(remote_base_path, rel_path)
+
+            if not full_path.exists():
+                print(f"WARN: Path not found: {rel_path}")
+                continue
+
+            if is_dir:
+                scp.put(str(full_path), recursive=True, remote_path=os.path.dirname(remote_path))
             else:
-                print(f"WARN: Path not found or ignored: {rel_path}")
+                scp.put(str(full_path), remote_path=remote_path)
 
     print("Push complete!")
 
 
 def pull_files(ssh, remote_base_path):
     with SCPClient(ssh.get_transport()) as scp:
-        for rel_path in FILES_TO_SYNC:
+        for rel_path, is_dir in CONTENTS_TO_SYNC:
             local_path = Path(rel_path)
             remote_path = os.path.join(remote_base_path, rel_path)
-            if rel_path.endswith("/") or rel_path in ["output", "inventories/prod"]:
+
+            if is_dir:
                 scp.get(remote_path, local_path=str(local_path.parent), recursive=True)
             else:
                 scp.get(remote_path, local_path=str(local_path))
