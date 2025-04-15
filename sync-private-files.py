@@ -10,7 +10,7 @@ from scp import SCPClient
 EXPECTED_DIR_NAME = "homelab"
 
 CONTENTS_TO_SYNC = [
-    (".ssh", True)                                 # folder
+    (".ssh", True),                                # folder
     ("inventories/prod", True),                    # folder
     ("output", True),                              # folder
     ("playbooks/files/docker-config.json", False), # file
