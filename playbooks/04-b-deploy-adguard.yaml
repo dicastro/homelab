@@ -104,3 +104,10 @@
         portainer_stack_name: "{{ service_name }}"
         service_compose_file: "{{ docker_compose_output }}"
         service_compose_file_changed: "{{ adguardhome_compose_file.changed }}"
+
+    - name: Add DNS rewrite AdGuard Home
+      ansible.builtin.include_role:
+        name: add-dns-rewrite
+      vars:
+        rewrite_domain: "{{ subdomain }}.{{ cluster_domain }}"
+        rewrite_answer: "{{ hostvars[destination_host].ansible_host }}"
