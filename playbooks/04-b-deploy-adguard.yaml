@@ -6,49 +6,48 @@
   vars:
     service_name: "adguardhome"
     destination_host: "dns"
+    container_name: "{{ service_name }}"
+    subdomain: "dns"
     frontend_port: "3000"
     docker_compose_template: "adguardhome/adguardhome-compose.yaml.j2"
     docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/adguardhome-compose.yaml"
-    adguardhome_subdomain: "dns"
+    ports:
+      - ext: "53"
+        int: "53/tcp"
+      - ext: "53"
+        int: "53/udp"
+      - ext: "3000"
+        int: "3000/tcp"
+    storage_base_dir: "/storage/adguardhome"
     adguardhome_config_template: "adguardhome/adguardhome-config.yaml.j2"
     adguardhome_config_output: "{{ output_path }}/{{ cluster_name }}/configs/adguardhome/adguardhome-config.yaml"
-    adguardhome_storage_base_dir: "/storage/adguardhome"
-    adguardhome_config_dir: "{{ adguardhome_storage_base_dir }}/conf"
-    adguardhome_volumes:
-      - "{{ adguardhome_storage_base_dir }}/work:/opt/adguardhome/work"
-      - "{{ adguardhome_config_dir }}:/opt/adguardhome/conf"
+    adguardhome_config_dir: "{{ storage_base_dir }}/conf"
+    volumes:
+      - src: "{{ storage_base_dir }}/work"
+        dst: "/opt/adguardhome/work"
+        type: dir
+      - src: "{{ adguardhome_config_dir }}"
+        dst: "/opt/adguardhome/conf"
+        type: dir
   vars_files:
     - vars/common.yaml
     - "{{ inventory_dir }}/docker-images.yaml"
     - "{{ inventory_dir }}/secrets.yaml"
 
   tasks:
+    - name: Extract ActualBudget named ports
+      ansible.builtin.include_role:
+        name: extract-named-ports-to-dict
+
     - name: Get portainer token and endpoints map
       ansible.builtin.include_role:
         name: get-portainer-token-and-endpoints-map
 
-    - name: Ensure required directories exist on the destination host
-      ansible.builtin.file:
-        path: "{{ item.split(':')[0] }}"
-        state: directory
-        mode: "0700"
-      loop: "{{ adguardhome_volumes }}"
-      delegate_to: "{{ destination_host }}"
-
-    - name: Ensure the base directory for docker-compose output exists
-      ansible.builtin.file:
-        path: "{{ docker_compose_output | dirname }}"
-        state: directory
-        mode: "0755"
-      delegate_to: "localhost"
-
-    - name: Generate adguardhome-compose.yaml from template
-      ansible.builtin.template:
-        src: "{{ docker_compose_template }}"
-        dest: "{{ docker_compose_output }}"
-        mode: "0644"
-      delegate_to: "localhost"
-      register: adguardhome_compose_file
+    - name: Ensure ActualBudget directories exist
+      ansible.builtin.include_role:
+        name: ensure-directories-exist
+      vars:
+        target_hosts: "{{ destination_host }}"
 
     - name: Ensure the base directory for AdGuardHome output config exists
       ansible.builtin.file:
@@ -88,6 +87,14 @@
         mode: "0644"
       delegate_to: "{{ destination_host }}"
       when: adguardhome_config_file.changed
+
+    - name: Generate adguardhome-compose.yaml from template
+      ansible.builtin.template:
+        src: "{{ docker_compose_template }}"
+        dest: "{{ docker_compose_output }}"
+        mode: "0644"
+      delegate_to: "localhost"
+      register: adguardhome_compose_file
 
     - name: Deploy AdGuard Home through Portainer
       ansible.builtin.include_role:

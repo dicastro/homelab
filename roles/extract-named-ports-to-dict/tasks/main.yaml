@@ -1,0 +1,23 @@
+# Role: extract-named-ports-to-dict
+#
+# This role extract named ports to a dictionary.
+#
+# INPUT VARIABLES:
+# ----------------
+#
+#
+# OUTPUT FACTS:
+# -------------
+# ports_dict       (dictionary)  Dictionary containing the named ports
+#
+- name: Extract named ports to a dictionary
+  set_fact:
+    ports_dict: >-
+      {{
+        dict(
+          ports
+          | selectattr("name", "defined")
+          | map(attribute="name")
+          | zip(ports | selectattr("name", "defined") | map(attribute="ext"))
+        )
+      }}

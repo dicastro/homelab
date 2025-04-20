@@ -9,7 +9,6 @@
     docker_login_file: "docker-config.json"  # Path to your login config file on Ansible control node
     docker_login_dest: "/root/.docker/config.json"  # Destination on remote hosts
     docker_certs_dir: "/etc/docker/certs"
-    certificate_tools_path: "{{ output_path }}/{{ cluster_name }}"
   vars_files:
     - vars/common.yaml
     - "{{ inventory_dir }}/secrets.yaml"

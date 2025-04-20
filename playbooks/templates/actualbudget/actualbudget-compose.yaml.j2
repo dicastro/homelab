@@ -1,15 +1,14 @@
 version: '3.8'
 
 services:
-  adguardhome:
-    image: {{ adguardhome_image }}
+  actualbudget:
+    image: {{ actualbudget_image }}
     container_name: {{ container_name }}
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.adguardhome.rule=Host(`{{ subdomain }}.{{ cluster_domain }}`)"
-      - "traefik.http.routers.adguardhome.entrypoints=websecure"
-      - "traefik.http.routers.adguardhome.tls.certresolver=letsencrypt"
-      - "traefik.http.services.adguardhome.loadbalancer.server.port={{ frontend_port }}"
+      - "traefik.http.routers.actualbudget.rule=Host(`{{ subdomain }}.{{ cluster_domain }}`)"
+      - "traefik.http.routers.actualbudget.entrypoints=websecure"
+      - "traefik.http.routers.actualbudget.tls.certresolver=letsencrypt"
     restart: unless-stopped
     volumes:
 {% for volume in volumes %}

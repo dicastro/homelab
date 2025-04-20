@@ -8,6 +8,7 @@
 # portainer_api_token           (string)   JWT token for authenticating with Portainer API
 # portainer_endpoint_name       (string)   Name of the endpoint (e.g., "local") to deploy the stack to
 # portainer_stack_name          (string)   The name of the stack to check or create/update
+# portainer_stack_env           (string)   The environment variables of the stack
 # service_compose_file          (string)   Path to the Docker Compose file to deploy
 # service_compose_file_changed  (boolean)  A boolean flag indicating whether the compose file has changed
 #
@@ -21,6 +22,15 @@
 #   - Delegation to the `management` host is used for API interactions.
 #   - File upload is performed locally (`delegate_to: localhost`) assuming the compose file is local.
 #
+- name: Clearing facts
+  ansible.builtin.set_fact:
+    portainer_stack_found: null
+
+- name: Initializing default Portainer Env
+  ansible.builtin.set_fact:
+    portainer_stack_env: "[]"
+  when: portainer_stack_env is not defined
+
 - name: Set endpoint ID from name
   ansible.builtin.set_fact:
     endpoint_id: "{{ portainer_endpoints_map[portainer_endpoint_name] }}"
@@ -42,16 +52,16 @@
 
 - name: Get stack matching name
   set_fact:
-    stack_candidates: "{{ portainer_stacks_response.json | selectattr('Name', 'equalto', portainer_stack_name) | list }}"
+    portainer_stack_candidates: "{{ portainer_stacks_response.json | selectattr('Name', 'equalto', portainer_stack_name) | list }}"
 
 - name: Find stack by name
   set_fact:
-    portainer_stack_found: "{{ stack_candidates[0] }}"
-  when: stack_candidates | length > 0
+    portainer_stack_found: "{{ portainer_stack_candidates[0] }}"
+  when: portainer_stack_candidates | length > 0
 
 - name: Set fact if stack exists
   ansible.builtin.set_fact:
-    portainer_stack_exists: "{{ portainer_stack_found is defined }}"
+    portainer_stack_exists: "{{ portainer_stack_found is defined and portainer_stack_found is not none }}"
 
 - name: Deploy stack to Portainer (Create or Update)
   ansible.builtin.shell: |
@@ -59,6 +69,7 @@
     curl -X POST "{{ portainer_api_url_remote }}/stacks/create/standalone/file?endpointId={{ endpoint_id }}" \
       -H "Authorization: Bearer {{ portainer_api_token }}" \
       -F "Name={{ portainer_stack_name }}" \
+      -F "Env={{ portainer_stack_env }}" \
       -F "file=@{{ service_compose_file }}" \
   delegate_to: localhost
   when: service_compose_file_changed or not portainer_stack_exists

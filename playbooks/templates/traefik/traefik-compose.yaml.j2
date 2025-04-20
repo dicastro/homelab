@@ -3,19 +3,19 @@ version: '3.8'
 services:
   traefik:
     image: {{ traefik_image }}
-    container_name: traefik
+    container_name: {{ container_name }}
     restart: unless-stopped
     environment:
       - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-{% for volume in traefik_volumes %}
+{% for volume in volumes %}
       - "{{ volume.src }}:{{ volume.dst }}"
 {% endfor %}
     ports:
-      - "80:80"
-      - "443:443"
-      - "8080:8080"
+{% for port in ports %}
+      - "{{ port.ext }}:{{ port.int }}"
+{% endfor %}
     networks:
       - frontend
 

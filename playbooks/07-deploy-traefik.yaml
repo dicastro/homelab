@@ -6,24 +6,30 @@
   vars:
     service_name: "traefik"
     frontend_port: "443"
-    certificate_tools_path: "{{ output_path }}/{{ cluster_name }}"
+    container_name: "traefik"
+    subdomain_prefix: "traefik"
     docker_compose_template: "traefik/traefik-compose.yaml.j2"
     docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/traefik-compose.yaml"
+    ports:
+      - ext: 80
+        int: 80
+      - ext: 443
+        int: 443
+      - ext: 8080
+        int: 8080
+    storage_base_dir: "/storage/traefik"
     docker_hosts_list: "{{ query('inventory_hostnames', 'docker_hosts') }}"
-    traefik_subdomain_prefix: "traefik"
     traefik_config_template: "traefik/traefik.yaml.j2"
     traefik_config_output: "{{ output_path }}/{{ cluster_name }}/configs/traefik/traefik.yaml"
     traefik_dynamic_template: "traefik/traefik-dynamic.yaml.j2"
     traefik_dynamic_output: "{{ output_path }}/{{ cluster_name }}/configs/traefik"
-    traefik_container_user: "traefik"
-    traefik_storage_base_dir: "/storage/traefik"
-    traefik_config_dir: "{{ traefik_storage_base_dir }}/config"
+    traefik_config_dir: "{{ storage_base_dir }}/config"
     traefik_config_file: "{{ traefik_config_dir }}/traefik.yaml"
-    traefik_certs_dir: "{{ traefik_storage_base_dir }}/certs"
-    traefik_acme_dir: "{{ traefik_storage_base_dir }}/acme"
-    traefik_dynamic_dir: "{{ traefik_storage_base_dir }}/dynamic"
+    traefik_certs_dir: "{{ storage_base_dir }}/certs"
+    traefik_acme_dir: "{{ storage_base_dir }}/acme"
+    traefik_dynamic_dir: "{{ storage_base_dir }}/dynamic"
     traefik_dynamic_file: "{{ traefik_dynamic_dir }}/dynamic.yaml"
-    traefik_volumes:
+    volumes:
       - src: "{{ traefik_config_file }}"
         dst: "/traefik.yaml:ro"
         type: file
@@ -42,27 +48,19 @@
     - "{{ inventory_dir }}/secrets.yaml"
 
   tasks:
+    - name: Extract Traefik named ports
+      ansible.builtin.include_role:
+        name: extract-named-ports-to-dict
+
     - name: Get portainer token and endpoints map
       ansible.builtin.include_role:
         name: get-portainer-token-and-endpoints-map
 
-    - name: Ensure required directories exist on the destination host
-      ansible.builtin.file:
-        path: "{{ item.1.src if item.1.type == 'dir' else item.1.src | dirname }}"
-        state: directory
-        mode: "0700"
-      loop: "{{ query('inventory_hostnames', 'docker_hosts') | product(traefik_volumes) | list }}"
-      loop_control:
-        label: "{{ item.0 }} - {{ item.1.src }}"
-      delegate_to: "{{ item.0 }}"
-      run_once: true
-
-    - name: Ensure the base directory for docker-compose output exists
-      ansible.builtin.file:
-        path: "{{ docker_compose_output | dirname }}"
-        state: directory
-        mode: "0755"
-      delegate_to: "localhost"
+    - name: Ensure Traefik directories exist
+      ansible.builtin.include_role:
+        name: ensure-directories-exist
+      vars:
+        target_hosts: docker_hosts
 
     - name: Ensure the base directory for Traefik output config exists
       ansible.builtin.file:
@@ -77,7 +75,6 @@
         dest: "{{ traefik_config_output }}"
         mode: "0644"
       delegate_to: "localhost"
-      register: traefik_config_rendered_template
 
     - name: Upload new Traefik config
       ansible.builtin.copy:
@@ -85,7 +82,6 @@
         dest: "{{ traefik_config_file }}"
         mode: "0644"
       delegate_to: "{{ item }}"
-      when: traefik_config_rendered_template.changed
       loop: "{{ docker_hosts_list }}"
 
     - name: Generate bcrypt password for Traefik admin password

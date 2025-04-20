@@ -4,6 +4,7 @@
   vars:
     portainer_endpoint_name: "{{ item }}"
     portainer_stack_name: "{{ service_name }}-{{ item }}"
+    portainer_stack_env: '[{\"name\": \"CF_DNS_API_TOKEN\", \"value\": \"{{ cloudflare_dns_api_token }}\"}]'
     service_compose_file: "{{ docker_compose_output }}"
     service_compose_file_changed: "{{ traefik_compose_file.changed }}"
 
@@ -11,5 +12,5 @@
   ansible.builtin.include_role:
     name: add-dns-rewrite
   vars:
-    rewrite_domain: "{{ traefik_subdomain_prefix }}-{{ item }}.{{ cluster_domain }}"
+    rewrite_domain: "{{ subdomain_prefix }}-{{ item }}.{{ cluster_domain }}"
     rewrite_answer: "{{ hostvars[item].ansible_host }}"

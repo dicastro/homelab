@@ -1,0 +1,62 @@
+# ------------------------------------------------------------------------------
+# Role Name: Ensure Required Directories
+# Description:
+#   This role ensures that required directories (such as volume sources) exist
+#   on the target hosts (typically Docker hosts), and that the base directory
+#   for Docker Compose file output exists on localhost.
+#
+# Inputs:
+#   - target_hosts (string, required)
+#       The name of the inventory group containing the target hosts.
+#
+#   - volumes (list of dicts, required)
+#       A list of volume definitions used in your deployment. Each item should have:
+#         - src  (string): Path of the source volume on the host
+#         - dst  (string): Path of the destination volume in the container
+#         - type (string): "dir" for directories or "file" for files
+#
+#     Example:
+#       volumes:
+#         - src: /opt/data/postgres
+#           dst: /postgres
+#           type: dir
+#         - src: /opt/config/nginx/nginx.conf
+#           dst: /nginx.conf
+#           type: file
+#
+#   - docker_compose_output (string, required)
+#       Full path to where the generated docker-compose.yml should be placed.
+#       The role will ensure that the parent directory exists on localhost.
+#
+# Example Usage:
+#   - hosts: localhost
+#     roles:
+#       - role: ensure_required_directories
+#         vars:
+#           target_hosts_group: docker_hosts
+#           volumes:
+#             - src: /opt/myapp/data
+#               dst: /data
+#               type: dir
+#             - src: /opt/myapp/config/app.conf
+#               dst: /app.conf
+#               type: file
+#           docker_compose_output: /home/user/deployments/myapp/docker-compose.yml
+# ------------------------------------------------------------------------------
+- name: Ensure required directories exist on the destination host
+  ansible.builtin.file:
+    path: "{{ item.1.src if item.1.type == 'dir' else (item.1.src | dirname) }}"
+    state: directory
+    mode: "0700"
+  loop: "{{ query('inventory_hostnames', target_hosts) | product(volumes) | list }}"
+  loop_control:
+    label: "{{ item.0 }} - {{ item.1.src }}"
+  delegate_to: "{{ item.0 }}"
+  run_once: true
+
+- name: Ensure the base directory for docker-compose output exists
+  ansible.builtin.file:
+    path: "{{ docker_compose_output | dirname }}"
+    state: directory
+    mode: "0755"
+  delegate_to: "localhost"

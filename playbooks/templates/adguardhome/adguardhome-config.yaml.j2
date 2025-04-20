@@ -145,7 +145,7 @@ filtering:
   parental_block_host: family-block.dns.adguard.com
   safebrowsing_block_host: standard-block.dns.adguard.com
   rewrites:
-    - domain: {{ adguardhome_subdomain }}.{{ cluster_domain }}
+    - domain: {{ subdomain }}.{{ cluster_domain }}
       answer: {{ rewrite_answer }}
   safe_fs_patterns:
     - /opt/adguardhome/work/userfilters/*

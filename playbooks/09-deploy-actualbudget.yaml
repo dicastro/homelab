@@ -1,0 +1,134 @@
+---
+- name: Deploy ActualBudget to Portainer
+  hosts: management
+  gather_facts: false
+  become: no
+  vars:
+    service_name: "actualbudget"
+    destination_host: "tracking"
+    container_name: "{{ service_name }}"
+    subdomain: "finance"
+    docker_compose_template: "actualbudget/actualbudget-compose.yaml.j2"
+    docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/actualbudget-compose.yaml"
+    ports:
+      - name: web
+        ext: 5006
+        int: 5006
+    storage_base_dir: "/storage/{{ service_name }}"
+    actualbudget_data_dir: "{{ storage_base_dir }}/data"
+    volumes:
+      - src: "{{ actualbudget_data_dir }}"
+        dst: "/data"
+        type: dir
+  vars_files:
+    - vars/common.yaml
+    - "{{ inventory_dir }}/docker-images.yaml"
+    - "{{ inventory_dir }}/secrets.yaml"
+
+  tasks:
+    - name: Extract ActualBudget named ports
+      ansible.builtin.include_role:
+        name: extract-named-ports-to-dict
+
+    - name: Get portainer token and endpoints map
+      ansible.builtin.include_role:
+        name: get-portainer-token-and-endpoints-map
+
+    - name: Ensure ActualBudget directories exist
+      ansible.builtin.include_role:
+        name: ensure-directories-exist
+      vars:
+        target_hosts: "{{ destination_host }}"
+
+    - name: Generate actualbudget-compose.yaml from template
+      ansible.builtin.template:
+        src: "{{ docker_compose_template }}"
+        dest: "{{ docker_compose_output }}"
+        mode: "0644"
+      delegate_to: "localhost"
+      register: actualbudget_compose_file
+
+    - name: Deploy ActualBudget through Portainer
+      ansible.builtin.include_role:
+        name: deploy-through-portainer
+      vars:
+        portainer_endpoint_name: "{{ destination_host }}"
+        portainer_stack_name: "{{ service_name }}"
+        service_compose_file: "{{ docker_compose_output }}"
+        service_compose_file_changed: "{{ actualbudget_compose_file.changed }}"
+
+    - name: Add DNS rewrite for ActualBudget
+      ansible.builtin.include_role:
+        name: add-dns-rewrite
+      vars:
+        rewrite_domain: "{{ subdomain }}.{{ cluster_domain }}"
+        rewrite_answer: "{{ hostvars[destination_host].ansible_host }}"
+
+    - name: Ensure expect is installed on the remote host
+      ansible.builtin.package:
+        name: expect
+        state: present
+      delegate_to: "{{ destination_host }}"
+
+    - name: Check if ActualBudget is bootstrapped
+      uri:
+        url: "http://localhost:{{ ports_dict.web }}/account/needs-bootstrap"
+        return_content: yes
+      register: actualbudget_bootstrap_response
+      changed_when: false
+      delegate_to: "{{ destination_host }}"
+
+    - name: Set fact whether ActualBudget needs bootstrap
+      set_fact:
+        actualbudget_needs_bootstrap: "{{ not actualbudget_bootstrap_response.json.data.bootstrapped }}"
+
+    - name: Write password reset script to a temporary file
+      copy:
+        dest: /tmp/reset-password.expect
+        mode: '0744'
+        content: |
+          #!/usr/bin/expect -f
+          set timeout 1
+          set password "{{ actualbudget_admin_password }}"
+
+          spawn docker exec -it {{ container_name }} node /app/src/scripts/reset-password.js
+
+          expect "Enter a password, then press enter: "
+          sleep 0.5
+          set i 0
+          foreach c [split $password ""] {
+              incr i
+              send "$c"
+              expect "Enter a password, then press enter: [string repeat * $i]"
+          }
+          send "\r"
+
+          expect "Enter the password again, then press enter: "
+          sleep 0.2
+          set i 0
+          foreach c [split $password ""] {
+              incr i
+              send "$c"
+              expect "Enter the password again, then press enter: [string repeat * $i]"
+          }
+          send "\r"
+          
+          expect eof
+      delegate_to: "{{ destination_host }}"
+      when: actualbudget_needs_bootstrap
+
+    - name: Run reset-password.expect
+      shell: /tmp/reset-password.expect
+      environment:
+        TERM: xterm
+      args:
+        executable: /bin/bash
+      delegate_to: "{{ destination_host }}"
+      when: actualbudget_needs_bootstrap
+
+    - name: Remove temporary expect script
+      file:
+        path: /tmp/reset-password.expect
+        state: absent
+      delegate_to: "{{ destination_host }}"
+      when: actualbudget_needs_bootstrap

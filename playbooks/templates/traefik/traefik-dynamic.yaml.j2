@@ -1,7 +1,7 @@
 http:
   routers:
     traefik-dashboard:
-      rule: "Host(`{{ traefik_subdomain_prefix }}-{{ item }}.{{ cluster_domain }}`)"
+      rule: "Host(`{{ subdomain_prefix }}-{{ item }}.{{ cluster_domain }}`)"
       entryPoints: ["websecure"]
       service: api@internal
       middlewares: ["auth"]
