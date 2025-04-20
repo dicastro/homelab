@@ -1,0 +1,61 @@
+---
+- name: Deploy AppRise to Portainer
+  hosts: management
+  gather_facts: false
+  become: no
+  vars:
+    service_name: "apprise"
+    destination_host: "management"
+    container_name: "{{ service_name }}"
+    subdomain: "notifications"
+    docker_compose_template: "apprise/apprise-compose.yaml.j2"
+    docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/apprise-compose.yaml"
+    ports:
+      - ext: 8100
+        int: 8000
+    storage_base_dir: "/storage/apprise"
+    apprise_telegram_url: "tgram://{{ telegram_notification_bot_token }}/{{ telegram_chat_id }}"
+    volumes:
+  vars_files:
+    - vars/common.yaml
+    - "{{ inventory_dir }}/docker-images.yaml"
+    - "{{ inventory_dir }}/secrets.yaml"
+
+  tasks:
+    - name: Extract AppRise named ports
+      ansible.builtin.include_role:
+        name: extract-named-ports-to-dict
+
+    - name: Get portainer token and endpoints map
+      ansible.builtin.include_role:
+        name: get-portainer-token-and-endpoints-map
+
+    - name: Ensure AppRise directories exist
+      ansible.builtin.include_role:
+        name: ensure-directories-exist
+      vars:
+        target_hosts: "{{ destination_host }}"
+
+    - name: Generate apprise-compose.yaml from template
+      ansible.builtin.template:
+        src: "{{ docker_compose_template }}"
+        dest: "{{ docker_compose_output }}"
+        mode: "0644"
+      delegate_to: "localhost"
+      register: apprise_compose_file
+
+    - name: Deploy AppRise through Portainer
+      ansible.builtin.include_role:
+        name: deploy-through-portainer
+      vars:
+        portainer_endpoint_name: "{{ destination_host }}"
+        portainer_stack_name: "{{ service_name }}"
+        service_compose_file: "{{ docker_compose_output }}"
+        service_compose_file_changed: "{{ apprise_compose_file.changed }}"
+
+    - name: Add DNS rewrite Apprise
+      ansible.builtin.include_role:
+        name: add-dns-rewrite
+      vars:
+        rewrite_domain: "{{ subdomain }}.{{ cluster_domain }}"
+        rewrite_answer: "{{ hostvars[destination_host].ansible_host }}"

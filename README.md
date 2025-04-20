@@ -2,7 +2,8 @@
 
 ## TODOs
 
-- create playbook to deploy apprise
+- configure apprise telegram notifications
+- increase management vm RAM to 3GB
 - create playbook to deploy homer dashboard
 - create playbook to deploy uptime kuma
 - create a specific telegram chatbot in order to receive notifications

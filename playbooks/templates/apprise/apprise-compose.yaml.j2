@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  apprise:
+    image: {{ apprise_image }}
+    container_name: {{ container_name }}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.apprise.rule=Host(`{{ subdomain }}.{{ cluster_domain }}`)"
+      - "traefik.http.routers.apprise.entrypoints=websecure"
+      - "traefik.http.routers.apprise.tls.certresolver=letsencrypt"
+    restart: unless-stopped
+{% if volumes | default([], true) | length > 0 %}
+    volumes:
+{% for volume in volumes %}
+      - "{{ volume.src }}:{{ volume.dst }}"
+{% endfor %}
+{% endif %}
+    ports:
+{% for port in ports %}
+      - "{{ port.ext }}:{{ port.int }}"
+{% endfor %}
+    networks:
+      - frontend
+
+networks:
+  frontend:
+    external: true
