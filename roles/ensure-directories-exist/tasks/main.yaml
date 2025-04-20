@@ -48,11 +48,12 @@
     path: "{{ item.1.src if item.1.type == 'dir' else (item.1.src | dirname) }}"
     state: directory
     mode: "0700"
-  loop: "{{ query('inventory_hostnames', target_hosts) | product(volumes) | list }}"
+  loop: "{{ query('inventory_hostnames', target_hosts) | product(volumes | default([]) | select | list) | list }}"
   loop_control:
     label: "{{ item.0 }} - {{ item.1.src }}"
   delegate_to: "{{ item.0 }}"
   run_once: true
+  when: volumes is defined and volumes | length > 0
 
 - name: Ensure the base directory for docker-compose output exists
   ansible.builtin.file:
