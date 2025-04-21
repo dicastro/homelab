@@ -11,11 +11,18 @@
     docker_compose_template: "apprise/apprise-compose.yaml.j2"
     docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/apprise-compose.yaml"
     ports:
-      - ext: 8100
+      - name: web
+        ext: 8100
         int: 8000
     storage_base_dir: "/storage/apprise"
-    apprise_telegram_url: "tgram://{{ telegram_notification_bot_token }}/{{ telegram_chat_id }}"
+    apprise_config_dir: "{{ storage_base_dir }}/config"
+    apprise_yaml_config: |
+      urls:
+        - "tgram://{{ telegram_notification_bot_token }}/{{ telegram_chat_id }}"
     volumes:
+      - src: "{{ apprise_config_dir }}"
+        dst: "/config"
+        type: dir
   vars_files:
     - vars/common.yaml
     - "{{ inventory_dir }}/docker-images.yaml"
@@ -25,6 +32,10 @@
     - name: Extract AppRise named ports
       ansible.builtin.include_role:
         name: extract-named-ports-to-dict
+
+    - name: Set AppRise base url
+      set_fact:
+        apprise_base_url: "http://localhost:{{ ports_dict.web }}"
 
     - name: Get portainer token and endpoints map
       ansible.builtin.include_role:
@@ -36,11 +47,26 @@
       vars:
         target_hosts: "{{ destination_host }}"
 
+    - name: Get UID of Ansible user
+      ansible.builtin.command: id -u
+      register: user_uid
+      delegate_to: "{{ destination_host }}"
+      changed_when: false
+
+    - name: Get GID of Ansible user
+      ansible.builtin.command: id -g
+      register: user_gid
+      delegate_to: "{{ destination_host }}"
+      changed_when: false
+
     - name: Generate apprise-compose.yaml from template
       ansible.builtin.template:
         src: "{{ docker_compose_template }}"
         dest: "{{ docker_compose_output }}"
         mode: "0644"
+      vars:
+        uid: "{{ user_uid.stdout }}"
+        gid: "{{ user_gid.stdout }}"
       delegate_to: "localhost"
       register: apprise_compose_file
 
@@ -59,3 +85,49 @@
       vars:
         rewrite_domain: "{{ subdomain }}.{{ cluster_domain }}"
         rewrite_answer: "{{ hostvars[destination_host].ansible_host }}"
+
+    - name: Wait for Apprise API to be ready
+      uri:
+        url: "{{ apprise_base_url }}/status"
+        method: GET
+        return_content: yes
+        status_code: 200
+      register: apprise_api_status
+      retries: 10
+      delay: 3
+      until: apprise_api_status.status == 200 and apprise_api_status.content == "OK"
+      delegate_to: "{{ destination_host }}"
+
+    - name: Check if default config "apprise" exists
+      uri:
+        url: "{{ apprise_base_url }}/get/apprise"
+        method: POST
+        body_format: json
+        body: {}
+        status_code: 200
+      register: apprise_get_response
+      failed_when: false
+
+    - name: Compare current vs desired apprise config
+      set_fact:
+        apprise_config_needs_update: "{{ (apprise_get_response.json.config | default('')) | trim != apprise_yaml_config | trim }}"
+
+    - name: Response
+      ansible.builtin.debug:
+        var: apprise_config_needs_update
+
+    - name: Delete existing "apprise" config if needed
+      uri:
+        url: "{{ apprise_base_url }}/del/apprise"
+        method: POST
+      when: apprise_config_needs_update and apprise_get_response.status == 200
+
+    - name: Set "apprise" config
+      uri:
+        url: "{{ apprise_base_url }}/add/apprise"
+        method: POST
+        body_format: json
+        body:
+          format: "yaml"
+          config: "{{ apprise_yaml_config }}"
+      when: apprise_config_needs_update

@@ -9,6 +9,9 @@ services:
       - "traefik.http.routers.apprise.rule=Host(`{{ subdomain }}.{{ cluster_domain }}`)"
       - "traefik.http.routers.apprise.entrypoints=websecure"
       - "traefik.http.routers.apprise.tls.certresolver=letsencrypt"
+    environment:
+      PUID: "{{ uid }}"
+      PGID: "{{ gid }}"
     restart: unless-stopped
 {% if volumes | default([], true) | length > 0 %}
     volumes:
