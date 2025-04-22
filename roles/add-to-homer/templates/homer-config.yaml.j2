@@ -1,0 +1,37 @@
+---
+name: "{{ dashboard_cluster_name }}"
+subtitle: "{{ dashboard_cluster_subtitle }}"
+logo: "logo.png"
+# logo: "fas fa-skull-crossbones" # Optional icon
+
+header: false
+footer: false
+columns: 4
+
+defaults:
+  layout: columns
+  colorTheme: auto
+
+theme: default
+
+links: [] # Allows for navbar (dark mode, layout, and search) without any links
+
+{% if homer_grouped_sections | default([]) | length > 0 %}
+services:
+{% for section in homer_grouped_sections.values() %}
+  - name: {{ section.name }}
+    items:
+{% for item in section['items'] %}
+      - name: {{ item.name }}
+        subtitle: {{ item.subtitle }}
+        url: {{ item.url }}
+{% if item.icon is defined %}
+        icon: {{ item.icon }}
+{% endif %}
+{% if item.logo is defined %}
+        logo: {{ item.logo }}
+{% endif %}
+        target: {{ item.target | default('_self') }}
+{% endfor %}
+{% endfor %}
+{% endif %}

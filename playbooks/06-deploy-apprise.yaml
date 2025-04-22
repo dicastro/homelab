@@ -86,8 +86,20 @@
         rewrite_domain: "{{ subdomain }}.{{ cluster_domain }}"
         rewrite_answer: "{{ hostvars[destination_host].ansible_host }}"
 
+    - name: Add AppRise to Homer Dashboard
+      ansible.builtin.include_role:
+        name: add-to-homer
+      vars:
+        homer_service_name: "Services"
+        homer_item:
+          name: "Notifications"
+          subtitle: "AppRise"
+          url: "https://{{ subdomain }}.{{ cluster_domain }}"
+          target: "_blank"
+          logo: "logo-apprise.png"
+
     - name: Wait for Apprise API to be ready
-      uri:
+      ansible.builtin.uri:
         url: "{{ apprise_base_url }}/status"
         method: GET
         return_content: yes
@@ -99,7 +111,7 @@
       delegate_to: "{{ destination_host }}"
 
     - name: Check if default config "apprise" exists
-      uri:
+      ansible.builtin.uri:
         url: "{{ apprise_base_url }}/get/apprise"
         method: POST
         body_format: json
@@ -112,18 +124,18 @@
       set_fact:
         apprise_config_needs_update: "{{ (apprise_get_response.json.config | default('')) | trim != apprise_yaml_config | trim }}"
 
-    - name: Response
+    - name: Debug apprise_config_needs_update
       ansible.builtin.debug:
         var: apprise_config_needs_update
 
     - name: Delete existing "apprise" config if needed
-      uri:
+      ansible.builtin.uri:
         url: "{{ apprise_base_url }}/del/apprise"
         method: POST
       when: apprise_config_needs_update and apprise_get_response.status == 200
 
     - name: Set "apprise" config
-      uri:
+      ansible.builtin.uri:
         url: "{{ apprise_base_url }}/add/apprise"
         method: POST
         body_format: json

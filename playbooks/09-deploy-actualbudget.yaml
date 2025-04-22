@@ -64,6 +64,18 @@
         rewrite_domain: "{{ subdomain }}.{{ cluster_domain }}"
         rewrite_answer: "{{ hostvars[destination_host].ansible_host }}"
 
+    - name: Add ActualBudget to Homer Dashboard
+      ansible.builtin.include_role:
+        name: add-to-homer
+      vars:
+        homer_service_name: "Services"
+        homer_item:
+          name: "Finance"
+          subtitle: "ActualBudget"
+          url: "https://{{ subdomain }}.{{ cluster_domain }}"
+          target: "_blank"
+          logo: "logo-actualbudget.png"
+
     - name: Ensure expect is installed on the remote host
       ansible.builtin.package:
         name: expect
@@ -71,7 +83,7 @@
       delegate_to: "{{ destination_host }}"
 
     - name: Check if ActualBudget is bootstrapped
-      uri:
+      ansible.builtin.uri:
         url: "http://localhost:{{ ports_dict.web }}/account/needs-bootstrap"
         return_content: yes
       register: actualbudget_bootstrap_response
@@ -79,11 +91,11 @@
       delegate_to: "{{ destination_host }}"
 
     - name: Set fact whether ActualBudget needs bootstrap
-      set_fact:
+      ansible.builtin.set_fact:
         actualbudget_needs_bootstrap: "{{ not actualbudget_bootstrap_response.json.data.bootstrapped }}"
 
     - name: Write password reset script to a temporary file
-      copy:
+      ansible.builtin.copy:
         dest: /tmp/reset-password.expect
         mode: '0744'
         content: |

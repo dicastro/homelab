@@ -1,0 +1,12 @@
+name: {{ homer_service_name }}
+items:
+  - name: {{ homer_item.name }}
+    subtitle: {{ homer_item.subtitle }}
+    url: {{ homer_item.url }}
+{% if homer_item.icon is defined %}
+    icon: {{ homer_item.icon }}
+{% endif %}
+{% if homer_item.logo is defined %}
+    logo: assets/{{ homer_item.logo }}
+{% endif %}
+    target: "_blank"

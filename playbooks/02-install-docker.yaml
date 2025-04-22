@@ -111,7 +111,7 @@
       ansible.builtin.copy:
         src: "{{ item.src }}"
         dest: "{{ item.dest }}"
-        mode: '0644'
+        mode: "0644"
       loop:
         - { src: "{{ ca_crt_path }}", dest: "{{ docker_certs_dir }}/ca.pem" }
         - { src: "{{ signed_crt_path }}", dest: "{{ docker_certs_dir }}/server-crt.pem" }
@@ -119,7 +119,7 @@
       notify: Restart Docker
 
     - name: Configure Docker log rotation and TLS
-      copy:
+      ansible.builtin.copy:
         dest: /etc/docker/daemon.json
         content: |
           {

@@ -6,7 +6,7 @@
     frontend_port: "9000"
     portainer_data_path: "/storage/portainer/data"
     portainer_container_name: "portainer"
-    portainer_subdomain: "portainer"
+    subdomain: "portainer"
   vars_files:
     - vars/common.yaml
     - "{{ inventory_dir }}/docker-images.yaml"
@@ -36,7 +36,7 @@
         state: started
         labels:
           "traefik.enable": "true"
-          "traefik.http.routers.portainer.rule": "Host(`{{ portainer_subdomain }}.{{ cluster_domain }}`)"
+          "traefik.http.routers.portainer.rule": "Host(`{{ subdomain }}.{{ cluster_domain }}`)"
           "traefik.http.routers.portainer.entrypoints": "websecure"
           "traefik.http.routers.portainer.tls.certresolver": "letsencrypt"
           "traefik.http.services.portainer.loadbalancer.server.port": "{{ frontend_port }}"
@@ -77,5 +77,17 @@
       ansible.builtin.include_role:
         name: add-dns-rewrite
       vars:
-        rewrite_domain: "{{ portainer_subdomain }}.{{ cluster_domain }}"
+        rewrite_domain: "{{ subdomain }}.{{ cluster_domain }}"
         rewrite_answer: "{{ hostvars[inventory_hostname].ansible_host }}"
+
+    - name: Add Portainer to Homer Dashboard
+      ansible.builtin.include_role:
+        name: add-to-homer
+      vars:
+        homer_service_name: "Services"
+        homer_item:
+          name: "Portainer"
+          subtitle: "Portainer"
+          url: "https://{{ subdomain }}.{{ cluster_domain }}"
+          target: "_blank"
+          logo: "logo-portainer.svg"

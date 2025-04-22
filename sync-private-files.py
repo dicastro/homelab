@@ -16,6 +16,7 @@ CONTENTS_TO_SYNC = [
     ("playbooks/files/docker-config.json", False), # file
     (".vault-pass", False),                        # file
     ("notes.md", False),                           # file
+    ("roles/add-to-homer/output", True),           # folder
 ]
 
 

@@ -14,3 +14,15 @@
   vars:
     rewrite_domain: "{{ subdomain_prefix }}-{{ item }}.{{ cluster_domain }}"
     rewrite_answer: "{{ hostvars[item].ansible_host }}"
+
+- name: Add Traefik to Homer Dashboard for {{ item }}
+  ansible.builtin.include_role:
+    name: add-to-homer
+  vars:
+    homer_service_name: "Services"
+    homer_item:
+      name: "Routing {{ item }}"
+      subtitle: "Traefik"
+      url: "https://{{ subdomain_prefix }}-{{ item }}.{{ cluster_domain }}"
+      target: "_blank"
+      logo: "logo-traefik.svg"

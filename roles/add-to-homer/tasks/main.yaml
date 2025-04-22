@@ -1,0 +1,94 @@
+# homer_service_name
+# homer_item.name
+# homer_item.subtitle
+# homer_item.url
+# homer_item.icon
+# homer_item.logo
+
+- name: Upload logo to Homer Dashboard assets
+  ansible.builtin.copy:
+    src: "logos/{{ homer_item.logo }}"
+    dest: "{{ homer_assets_dir }}/{{ homer_item.logo }}"
+    mode: "0644"
+  delegate_to: "{{ homer_destination_host }}"
+  when: homer_item.logo is defined
+
+- name: Render service item file
+  ansible.builtin.template:
+    src: service_item.yaml.j2
+    dest: "{{ item_dir }}/{{ homer_service_name | lower | replace(' ', '_') }}_{{ homer_item.name | lower | replace(' ', '_') }}.yaml"
+  vars:
+    item_dir: "{{ role_path }}/output/service-items"
+  delegate_to: localhost
+  register: rendered_service_item_result
+
+- name: Rebuild homer config
+  when: rendered_service_item_result.changed
+  block:
+    - name: Load all service item files
+      ansible.builtin.find:
+        paths: "{{ role_path }}/output/service-items"
+        patterns: "*.yaml"
+      delegate_to: localhost
+      register: homer_service_item_files
+
+    - name: Read service item YAML files
+      ansible.builtin.slurp:
+        src: "{{ service_item_file.path }}"
+      loop: "{{ homer_service_item_files.files }}"
+      loop_control:
+        loop_var: service_item_file
+        label: "{{ service_item_file.path }}"
+      delegate_to: localhost
+      register: homer_slurped_service_items
+
+    - name: Initialize homer_loaded_service_items
+      ansible.builtin.set_fact:
+        homer_loaded_service_items: []
+
+    - name: Set facts for each loaded item
+      ansible.builtin.set_fact:
+        homer_loaded_service_items: "{{ homer_loaded_service_items + [ (service_item_slurp.content | b64decode | from_yaml) ] }}"
+      loop: "{{ homer_slurped_service_items.results }}"
+      loop_control:
+        loop_var: service_item_slurp
+
+    - name: Initialize homer_grouped_sections
+      ansible.builtin.set_fact:
+        homer_grouped_sections: {}
+
+    - name: Group items by section
+      ansible.builtin.set_fact:
+        homer_grouped_sections: "{{ homer_grouped_sections | default({}) | combine(new_group, recursive=True) }}"
+      vars:
+        section_name: "{{ service_item.name }}"
+        new_group: >-
+          {{
+            {
+              section_name: {
+                'name': section_name,
+                'items': (
+                  (homer_grouped_sections[section_name]['items'] | default([]))
+                  + (service_item['items'] | default([]))
+                )
+              }
+            }
+          }}
+      loop: "{{ homer_loaded_service_items }}"
+      loop_control:
+        loop_var: service_item
+
+    - name: Generate Homer config
+      ansible.builtin.template:
+        src: homer-config.yaml.j2
+        dest: "{{ role_path }}/output/config/homer-config.yaml"
+      delegate_to: localhost
+      register: rendered_homer_config_file
+
+    - name: Upload Homer config
+      ansible.builtin.copy:
+        src: "{{ role_path }}/output/config/homer-config.yaml"
+        dest: "{{ homer_config_file }}"
+        mode: "0644"
+      delegate_to: "{{ homer_destination_host }}"
+      when: rendered_homer_config_file.changed

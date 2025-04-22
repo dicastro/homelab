@@ -111,3 +111,15 @@
       vars:
         rewrite_domain: "{{ subdomain }}.{{ cluster_domain }}"
         rewrite_answer: "{{ hostvars[destination_host].ansible_host }}"
+
+    - name: Add AdGuard Home to Homer Dashboard
+      ansible.builtin.include_role:
+        name: add-to-homer
+      vars:
+        homer_service_name: "Services"
+        homer_item:
+          name: "DNS"
+          subtitle: "AdGuard Home"
+          url: "https://{{ subdomain }}.{{ cluster_domain }}"
+          target: "_blank"
+          logo: "logo-adguardhome.svg"

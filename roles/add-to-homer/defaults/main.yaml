@@ -1,0 +1,3 @@
+homer_destination_host: "management"
+homer_assets_dir: "/storage/homer/assets"
+homer_config_file: "{{ homer_assets_dir }}/config.yml"

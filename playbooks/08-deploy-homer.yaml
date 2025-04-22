@@ -1,0 +1,67 @@
+---
+- name: Deploy Homer Dashboard to Portainer
+  hosts: management
+  gather_facts: false
+  become: no
+  vars:
+    service_name: "homer"
+    destination_host: "management"
+    container_name: "{{ service_name }}"
+    subdomain: "home"
+    docker_compose_template: "homer/homer-compose.yaml.j2"
+    docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/homer-compose.yaml"
+    ports:
+      - ext: 8200
+        int: 8080
+    storage_base_dir: "/storage/homer"
+    homer_assets_dir: "{{ storage_base_dir }}/assets"
+    volumes:
+      - src: "{{ homer_assets_dir }}"
+        dst: "/www/assets"
+        type: dir
+  vars_files:
+    - vars/common.yaml
+    - "{{ inventory_dir }}/docker-images.yaml"
+    - "{{ inventory_dir }}/secrets.yaml"
+
+  tasks:
+    - name: Extract Homer Dashboard named ports
+      ansible.builtin.include_role:
+        name: extract-named-ports-to-dict
+
+    - name: Get portainer token and endpoints map
+      ansible.builtin.include_role:
+        name: get-portainer-token-and-endpoints-map
+
+    - name: Ensure Homer Dashboard directories exist
+      ansible.builtin.include_role:
+        name: ensure-directories-exist
+      vars:
+        target_hosts: "{{ destination_host }}"
+
+    - name: Generate homer-compose.yaml from template
+      ansible.builtin.template:
+        src: "{{ docker_compose_template }}"
+        dest: "{{ docker_compose_output }}"
+        mode: "0644"
+      vars:
+        uid: "{{ user_uid.stdout }}"
+        gid: "{{ user_gid.stdout }}"
+      delegate_to: "localhost"
+      register: homer_compose_file
+
+    - name: Deploy Homer Dashboard through Portainer
+      ansible.builtin.include_role:
+        name: deploy-through-portainer
+      vars:
+        portainer_endpoint_name: "{{ destination_host }}"
+        portainer_stack_name: "{{ service_name }}"
+        service_compose_file: "{{ docker_compose_output }}"
+        service_compose_file_changed: "{{ homer_compose_file.changed }}"
+
+    - name: Add DNS rewrite Homer Dashboard
+      ansible.builtin.include_role:
+        name: add-dns-rewrite
+      vars:
+        rewrite_domain: "{{ subdomain }}.{{ cluster_domain }}"
+        rewrite_answer: "{{ hostvars[destination_host].ansible_host }}"
