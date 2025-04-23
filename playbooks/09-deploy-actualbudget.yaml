@@ -11,8 +11,8 @@
     docker_compose_template: "actualbudget/actualbudget-compose.yaml.j2"
     docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/actualbudget-compose.yaml"
     ports:
-      - name: web
-        ext: 5006
+      - name: frontend
+        ext: "{{ actualbudget_frontend_port }}"
         int: 5006
     storage_base_dir: "/storage/{{ service_name }}"
     actualbudget_data_dir: "{{ storage_base_dir }}/data"
@@ -24,6 +24,7 @@
     - vars/common.yaml
     - "{{ inventory_dir }}/docker-images.yaml"
     - "{{ inventory_dir }}/secrets.yaml"
+    - "{{ inventory_dir }}/docker-ports.yaml"
 
   tasks:
     - name: Extract ActualBudget named ports
@@ -84,7 +85,7 @@
 
     - name: Check if ActualBudget is bootstrapped
       ansible.builtin.uri:
-        url: "http://localhost:{{ ports_dict.web }}/account/needs-bootstrap"
+        url: "http://localhost:{{ ports_dict.frontend }}/account/needs-bootstrap"
         return_content: yes
       register: actualbudget_bootstrap_response
       changed_when: false

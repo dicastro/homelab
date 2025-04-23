@@ -1,1 +1,1 @@
-adguardhome_url: "http://localhost:3000"
+adguardhome_url: "http://localhost:{{ adguardhome_frontend_port }}"

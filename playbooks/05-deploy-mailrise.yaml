@@ -10,7 +10,7 @@
     docker_compose_template: "mailrise/mailrise-compose.yaml.j2"
     docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/mailrise-compose.yaml"
     ports:
-      - ext: 8025
+      - ext: "{{ mailrise_port }}"
         int: 8025
     storage_base_dir: "/storage/mailrise"
     proxmox_notification_target_name: "{{ service_name }}"
@@ -37,6 +37,7 @@
     - vars/common.yaml
     - "{{ inventory_dir }}/docker-images.yaml"
     - "{{ inventory_dir }}/secrets.yaml"
+    - "{{ inventory_dir }}/docker-ports.yaml"
 
   tasks:
     - name: Extract MailRise named ports

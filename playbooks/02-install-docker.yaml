@@ -5,13 +5,15 @@
   vars:
     docker_log_options:
       max_size: "10m"
-      max_file: "3"
+      max_file: "10"
     docker_login_file: "docker-config.json"  # Path to your login config file on Ansible control node
     docker_login_dest: "/root/.docker/config.json"  # Destination on remote hosts
     docker_certs_dir: "/etc/docker/certs"
   vars_files:
     - vars/common.yaml
+    - "{{ inventory_dir }}/docker-images.yaml"
     - "{{ inventory_dir }}/secrets.yaml"
+    - "{{ inventory_dir }}/docker-ports.yaml"
 
   tasks:
     - name: Gather Ubuntu distribution facts
@@ -133,7 +135,7 @@
             "tlscacert": "{{ docker_certs_dir }}/ca.pem",
             "tlscert": "{{ docker_certs_dir }}/server-crt.pem",
             "tlskey": "{{ docker_certs_dir }}/server-key.pem",
-            "hosts": ["tcp://0.0.0.0:2376", "unix:///var/run/docker.sock"]
+            "hosts": ["tcp://0.0.0.0:{{ docker_daemon_tls_port }}", "unix:///var/run/docker.sock"]
           }
       notify: Restart Docker
 
@@ -176,6 +178,20 @@
         name: frontend
         driver: bridge
         state: present
+
+    - name: Run cAdvisor container
+      community.docker.docker_container:
+        name: cadvisor
+        image: "{{ cadvisor_image }}"
+        restart_policy: unless-stopped
+        published_ports:
+          - "{{ cadvisor_port }}:8080"
+        volumes:
+          - "/:/rootfs:ro"
+          - "/var/run:/var/run:ro"
+          - "/sys:/sys:ro"
+          - "/var/lib/docker/:/var/lib/docker:ro"
+        state: started
 
   handlers:
     - name: Restart Docker

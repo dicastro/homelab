@@ -7,9 +7,9 @@ api:
 
 entryPoints:
   web:
-    address: ":80"
+    address: ":{{ traefik_web_port }}"
   websecure:
-    address: ":443"
+    address: ":{{ traefik_websecure_port }}"
 
 certificatesResolvers:
   letsencrypt:

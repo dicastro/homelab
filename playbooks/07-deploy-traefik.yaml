@@ -11,11 +11,11 @@
     docker_compose_template: "traefik/traefik-compose.yaml.j2"
     docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/traefik-compose.yaml"
     ports:
-      - ext: 80
+      - ext: "{{ traefik_web_port }}"
         int: 80
-      - ext: 443
+      - ext: "{{ traefik_web_port }}"
         int: 443
-      - ext: 8080
+      - ext: "{{ traefik_dashboard_port }}"
         int: 8080
     storage_base_dir: "/storage/traefik"
     docker_hosts_list: "{{ query('inventory_hostnames', 'docker_hosts') }}"
@@ -46,6 +46,7 @@
     - vars/common.yaml
     - "{{ inventory_dir }}/docker-images.yaml"
     - "{{ inventory_dir }}/secrets.yaml"
+    - "{{ inventory_dir }}/docker-ports.yaml"
 
   tasks:
     - name: Extract Traefik named ports

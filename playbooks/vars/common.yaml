@@ -1,6 +1,6 @@
 output_path: "{{ playbook_dir }}/../output"
 
-portainer_api_url: "http://localhost:9000/api"
+portainer_api_url: "http://localhost:{{ portainer_frontend_port }}/api"
 portainer_api_url_remote: "http://{{ hostvars['management'].ansible_host }}:9000/api"
 
 certificate_tools_path: "{{ output_path }}/{{ cluster_name }}"

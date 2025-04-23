@@ -11,7 +11,7 @@
     docker_compose_template: "homer/homer-compose.yaml.j2"
     docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/homer-compose.yaml"
     ports:
-      - ext: 8200
+      - ext: "{{ homer_frontend_port }}"
         int: 8080
     storage_base_dir: "/storage/homer"
     homer_assets_dir: "{{ storage_base_dir }}/assets"
@@ -23,6 +23,7 @@
     - vars/common.yaml
     - "{{ inventory_dir }}/docker-images.yaml"
     - "{{ inventory_dir }}/secrets.yaml"
+    - "{{ inventory_dir }}/docker-ports.yaml"
 
   tasks:
     - name: Extract Homer Dashboard named ports

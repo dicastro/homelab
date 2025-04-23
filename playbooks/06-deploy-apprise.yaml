@@ -11,8 +11,8 @@
     docker_compose_template: "apprise/apprise-compose.yaml.j2"
     docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/apprise-compose.yaml"
     ports:
-      - name: web
-        ext: 8100
+      - name: frontend
+        ext: "{{ apprise_frontend_port }}"
         int: 8000
     storage_base_dir: "/storage/apprise"
     apprise_config_dir: "{{ storage_base_dir }}/config"
@@ -27,6 +27,7 @@
     - vars/common.yaml
     - "{{ inventory_dir }}/docker-images.yaml"
     - "{{ inventory_dir }}/secrets.yaml"
+    - "{{ inventory_dir }}/docker-ports.yaml"
 
   tasks:
     - name: Extract AppRise named ports
@@ -35,7 +36,7 @@
 
     - name: Set AppRise base url
       set_fact:
-        apprise_base_url: "http://localhost:{{ ports_dict.web }}"
+        apprise_base_url: "http://localhost:{{ ports_dict.frontend }}"
 
     - name: Get portainer token and endpoints map
       ansible.builtin.include_role:

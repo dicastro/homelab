@@ -9,7 +9,7 @@ services:
       - "traefik.http.routers.adguardhome.rule=Host(`{{ subdomain }}.{{ cluster_domain }}`)"
       - "traefik.http.routers.adguardhome.entrypoints=websecure"
       - "traefik.http.routers.adguardhome.tls.certresolver=letsencrypt"
-      - "traefik.http.services.adguardhome.loadbalancer.server.port={{ frontend_port }}"
+      - "traefik.http.services.adguardhome.loadbalancer.server.port={{ adguardhome_frontend_port }}"
     restart: unless-stopped
     volumes:
 {% for volume in volumes %}

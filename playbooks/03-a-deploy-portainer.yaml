@@ -3,7 +3,6 @@
   hosts: management
   become: no
   vars:
-    frontend_port: "9000"
     portainer_data_path: "/storage/portainer/data"
     portainer_container_name: "portainer"
     subdomain: "portainer"
@@ -11,6 +10,7 @@
     - vars/common.yaml
     - "{{ inventory_dir }}/docker-images.yaml"
     - "{{ inventory_dir }}/secrets.yaml"
+    - "{{ inventory_dir }}/docker-ports.yaml"
 
   tasks:
     - name: Ensure Portainer data directory exists
@@ -27,8 +27,8 @@
         image: "{{ portainer_image }}"
         restart_policy: unless-stopped
         ports:
-          - "9000:9000"
-          - "8000:8000"
+          - "{{ portainer_frontend_port }}:9000"
+          - "{{ portainer_other_port }}:8000"
         volumes:
           - "{{ portainer_data_path }}:/data"
         networks:
@@ -39,7 +39,7 @@
           "traefik.http.routers.portainer.rule": "Host(`{{ subdomain }}.{{ cluster_domain }}`)"
           "traefik.http.routers.portainer.entrypoints": "websecure"
           "traefik.http.routers.portainer.tls.certresolver": "letsencrypt"
-          "traefik.http.services.portainer.loadbalancer.server.port": "{{ frontend_port }}"
+          "traefik.http.services.portainer.loadbalancer.server.port": "{{ portainer_frontend_port }}"
 
     - name: Wait for Portainer API to be ready
       ansible.builtin.uri:

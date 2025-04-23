@@ -2,7 +2,12 @@
 
 ## TODOs
 
-- create playbook to deploy uptime kuma
+- create playbook deploy-monitoring to deploy prometheus
+- update playbook deploy-monitoring to deploy alertmanager
+- update playbook deploy-monitoring to deploy loki
+- update playbook deploy-monitoring to deploy promtail
+- update playbook deploy-monitoring to deploy grafana
+- change approach of playbooks to run into localhost and just delegate to specific hosts required tasks
 - create a specific telegram chatbot in order to receive notifications
 - update configuration of mailrise in order to use the correct telegram chatbot
 - adapt backup folders/files in `download.sh` once the project structure is definitive

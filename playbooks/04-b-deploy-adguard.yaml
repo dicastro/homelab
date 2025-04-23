@@ -12,11 +12,11 @@
     docker_compose_template: "adguardhome/adguardhome-compose.yaml.j2"
     docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/adguardhome-compose.yaml"
     ports:
-      - ext: "53"
+      - ext: "{{ adguardhome_dns_port }}"
         int: "53/tcp"
-      - ext: "53"
+      - ext: "{{ adguardhome_dns_port }}"
         int: "53/udp"
-      - ext: "3000"
+      - ext: "{{ adguardhome_frontend_port }}"
         int: "3000/tcp"
     storage_base_dir: "/storage/adguardhome"
     adguardhome_config_template: "adguardhome/adguardhome-config.yaml.j2"
@@ -33,6 +33,7 @@
     - vars/common.yaml
     - "{{ inventory_dir }}/docker-images.yaml"
     - "{{ inventory_dir }}/secrets.yaml"
+    - "{{ inventory_dir }}/docker-ports.yaml"
 
   tasks:
     - name: Extract ActualBudget named ports
