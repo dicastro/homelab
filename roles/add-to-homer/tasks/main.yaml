@@ -1,10 +1,47 @@
-# homer_service_name
-# homer_item.name
-# homer_item.subtitle
-# homer_item.url
-# homer_item.icon
-# homer_item.logo
-
+# ------------------------------------------------------------------------------
+# Role Name: add-to-hommer
+#
+# Description:
+#   This role automates the management of service items for a Homer dashboard.
+#   It performs the following tasks:
+#     - Uploads custom logo assets to the Homer dashboard.
+#     - Renders individual service item YAML files from templates.
+#     - Rebuilds the main Homer configuration file by:
+#         - Collecting all rendered service item files.
+#         - Decoding and loading their content as structured data.
+#         - Grouping service items by section.
+#         - Rendering a complete Homer configuration file.
+#     - Uploads the generated Homer configuration to the target host.
+#
+# Requirements:
+#   - The logo file (if used) must exist in the `logos/` directory relative to
+#     the playbook or role.
+#
+# Role Variables:
+#   homer_item:
+#     Dictionary representing a service item. Expected keys:
+#       - name: Name of the service
+#       - subtitle: Subtitle of the service
+#       - url: URL of the service
+#       - logo (optional): Filename of the logo of the service
+#       - icon (optional): Icon of the service
+#
+#   homer_service_name:
+#     A logical grouping name (e.g., project or application name) used in the
+#     rendered service item filename.
+#
+# Example Usage:
+#   - name: Add Custom Service to Homer Dashboard
+#      ansible.builtin.include_role:
+#        name: add-to-homer
+#      vars:
+#        homer_service_name: "Services"
+#        homer_item:
+#          name: "CustomService"
+#          subtitle: "CustomServiceTechnology"
+#          url: "https://customservice.mydomain.com"
+#          logo: "logo-custom-service.png"
+# ------------------------------------------------------------------------------
 - name: Upload logo to Homer Dashboard assets
   ansible.builtin.copy:
     src: "logos/{{ homer_item.logo }}"
