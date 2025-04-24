@@ -4,12 +4,12 @@
 
 - include labels (monitoring.enabled) to all containers to facilitate querying metrics
 - create playbook to deploy alertmanager
-- create playbook to deploy grafana
 - create playbook deploy loki
 - create playbook to deploy promtail
+- create playbook to deploy grafana
+- create playbook to deploy diun
 - create playbook to deploy nut server
 - create playbook to deploy pienut
-- create playbook to deploy watchtower
 - create playbook to deploy vaultwarden
 - migrate data from vaultwarden in homeassistant in rpi
 - create playbook to deploy homeassistant
