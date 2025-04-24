@@ -15,6 +15,10 @@
       ansible.builtin.include_role:
         name: get-portainer-token-and-endpoints-map
 
+    - name: Set Portainer API URL
+      set_fact:
+        portainer_api_url_remote: "http://{{ hostvars['management'].ansible_host }}:{{ portainer_frontend_port }}/api"
+
     - name: Create missing endpoints
       ansible.builtin.shell: |
         # Using curl instead of ansible.builtin.uri to ensure correct file uploads

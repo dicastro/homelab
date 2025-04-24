@@ -12,6 +12,10 @@
 # portainer_api_token      (string)  The JWT token returned by the Portainer API after authentication
 # portainer_endpoints_map  (map)     A dictionary mapping endpoint names to their numeric IDs, e.g. { "local": 1, "remote-docker": 2 }
 
+- name: Set Portainer API URL
+  set_fact:
+    portainer_api_url: "http://localhost:{{ portainer_frontend_port }}/api"
+
 - name: Wait for Portainer API to be ready
   ansible.builtin.uri:
     url: "{{ portainer_api_url }}/status"

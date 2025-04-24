@@ -1,5 +1,5 @@
 # ------------------------------------------------------------------------------
-# Role Name: Ensure Required Directories
+# Role Name: ensure-directories-exist
 # Description:
 #   This role ensures that required directories (such as volume sources) exist
 #   on the target hosts (typically Docker hosts), and that the base directory
@@ -33,7 +33,7 @@
 #     roles:
 #       - role: ensure_required_directories
 #         vars:
-#           target_hosts_group: docker_hosts
+#           target_hosts: docker_hosts
 #           volumes:
 #             - src: /opt/myapp/data
 #               dst: /data

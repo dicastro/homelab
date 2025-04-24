@@ -2,15 +2,29 @@
 
 ## TODOs
 
-- create playbook deploy-monitoring to deploy prometheus
-- update playbook deploy-monitoring to deploy alertmanager
-- update playbook deploy-monitoring to deploy loki
-- update playbook deploy-monitoring to deploy promtail
-- update playbook deploy-monitoring to deploy grafana
-- change approach of playbooks to run into localhost and just delegate to specific hosts required tasks
+- include labels (monitoring.enabled) to all containers to facilitate querying metrics
+- create playbook to deploy alertmanager
+- create playbook to deploy grafana
+- create playbook deploy loki
+- create playbook to deploy promtail
+- create playbook to deploy nut server
+- create playbook to deploy pienut
+- create playbook to deploy watchtower
+- create playbook to deploy vaultwarden
+- migrate data from vaultwarden in homeassistant in rpi
+- create playbook to deploy homeassistant
+- migrate data from homeassistant in rpi
+- create playbook to deploy service to track car expenses
+- create playbook to deploy service to track recipes
+- create playbook to deploy owncloud
+- create playbook to deploy immitch
+- install proxmox backup server in laptop hp envy 17
+- create playbook to configure backups for VMs
+- create a variable portainer_destination_host and use it in 03-a-deploy-portainer.yaml (in `hosts`), 03-b-create-endpoints.yaml (in `hosts` and setting fact `portainer_api_url_remote`), role deploy-through-portainer (setting fact `portainer_api_url_remote`)
 - create a specific telegram chatbot in order to receive notifications
 - update configuration of mailrise in order to use the correct telegram chatbot
 - adapt backup folders/files in `download.sh` once the project structure is definitive
+- review in detail playbook 10-a-deploy-prometheus.yaml as it is not idempotent, sometimes prometheus-config.yaml is interpreted as directory
 
 
 ## How to download this repo (read-only mode, without `git clone`)

@@ -1,0 +1,45 @@
+---
+- name: Deploy Monitoring through Portainer
+  hosts: management
+  gather_facts: false
+  become: no
+  vars:
+    service_name: "prometheus"
+    destination_host: "management"
+    storage_base_dir: "/storage/{{ service_name }}"
+    prometheus_config_output: "{{ output_path }}/{{ cluster_name }}/configs/prometheus/prometheus-config.yaml"
+    prometheus_docker_targets_template: "prometheus/prometheus-docker-targets.json.j2"
+    prometheus_docker_targets_output: "{{ output_path }}/{{ cluster_name }}/configs/prometheus/prometheus-docker-targets.json"
+    prometheus_config_dir: "{{ storage_base_dir }}/config"
+    prometheus_docker_targets_filename_host: "docker-targets.json"
+    prometheus_docker_targets_dir_host: "{{ prometheus_config_dir }}/file_sd"
+    prometheus_docker_targets_file_host: "{{ prometheus_docker_targets_dir_host }}/{{ prometheus_docker_targets_filename_host }}"
+  vars_files:
+    - vars/common.yaml
+    - "{{ inventory_dir }}/docker-images.yaml"
+    - "{{ inventory_dir }}/secrets.yaml"
+    - "{{ inventory_dir }}/docker-ports.yaml"
+
+  tasks:
+    - name: Ensure the base directory for Prometheus output config exists
+      ansible.builtin.file:
+        path: "{{ prometheus_config_output | dirname }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+
+    - name: Render prometheus-docker-targets.json from template
+      ansible.builtin.template:
+        src: "{{ prometheus_docker_targets_template }}"
+        dest: "{{ prometheus_docker_targets_output }}"
+        mode: "0644"
+      delegate_to: localhost
+      register: rendered_prometheus_docker_targets_file
+
+    - name: Upload new Prometheus docker-targets.json
+      ansible.builtin.copy:
+        src: "{{ prometheus_docker_targets_output }}"
+        dest: "{{ prometheus_docker_targets_file_host }}"
+        mode: "0644"
+      delegate_to: "{{ destination_host }}"
+      when: rendered_prometheus_docker_targets_file.changed

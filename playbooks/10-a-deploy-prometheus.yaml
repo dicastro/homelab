@@ -1,0 +1,145 @@
+---
+- name: Deploy Monitoring through Portainer
+  hosts: management
+  gather_facts: false
+  become: no
+  vars:
+    service_name: "prometheus"
+    destination_host: "management"
+    container_name: "{{ service_name }}"
+    subdomain: "metrics"
+    docker_compose_template: "prometheus/prometheus-compose.yaml.j2"
+    docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/prometheus-compose.yaml"
+    ports:
+      - ext: "{{ prometheus_frontend_port }}"
+        int: 9090
+    storage_base_dir: "/storage/{{ service_name }}"
+    prometheus_retention: "15d"
+    prometheus_config_template: "prometheus/prometheus-config.yaml.j2"
+    prometheus_config_output: "{{ output_path }}/{{ cluster_name }}/configs/prometheus/prometheus-config.yaml"
+    prometheus_config_dir: "{{ storage_base_dir }}/config"
+    prometheus_docker_targets_filename_host: "docker-targets.json"
+    prometheus_docker_targets_filename_container: "{{ prometheus_docker_targets_filename_host }}"
+    prometheus_docker_targets_dir_host: "{{ prometheus_config_dir }}/file_sd"
+    prometheus_docker_targets_dir_container: "/etc/prometheus/file_sd"
+    prometheus_docker_targets_file_container: "{{ prometheus_docker_targets_dir_container }}/{{ prometheus_docker_targets_filename_container }}"
+    prometheus_config_file_host: "{{ prometheus_config_dir }}/prometheus.yaml"
+    prometheus_config_file_container: "/etc/prometheus/prometheus.yaml"
+    prometheus_data_dir: "{{ storage_base_dir }}"
+    volumes:
+      - src: "{{ prometheus_config_file_host }}"
+        dst: "{{ prometheus_config_file_container }}:ro"
+        type: file
+      - src: "{{ prometheus_docker_targets_dir_host }}"
+        dst: "{{ prometheus_docker_targets_dir_container }}:ro"
+        type: dir
+      - src: "{{ prometheus_data_dir }}"
+        dst: "/prometheus"
+        type: dir
+  vars_files:
+    - vars/common.yaml
+    - "{{ inventory_dir }}/docker-images.yaml"
+    - "{{ inventory_dir }}/secrets.yaml"
+    - "{{ inventory_dir }}/docker-ports.yaml"
+
+  tasks:
+    - name: Get portainer token and endpoints map
+      ansible.builtin.include_role:
+        name: get-portainer-token-and-endpoints-map
+
+    - name: Ensure Prometheus directories exist
+      ansible.builtin.include_role:
+        name: ensure-directories-exist
+      vars:
+        target_hosts: "{{ destination_host }}"
+
+    - name: Ensure the base directory for Prometheus output config exists
+      ansible.builtin.file:
+        path: "{{ prometheus_config_output | dirname }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+
+    - name: Render prometheus-config.yaml from template
+      ansible.builtin.template:
+        src: "{{ prometheus_config_template }}"
+        dest: "{{ prometheus_config_output }}"
+        mode: "0644"
+      delegate_to: localhost
+      register: rendered_prometheus_config_file
+
+    - name: Debug
+      ansible.builtin.debug:
+        var: prometheus_config_output
+      when: false
+
+    - name: Stat source file
+      ansible.builtin.stat:
+        path: "{{ prometheus_config_output }}"
+      delegate_to: localhost
+      register: prometheus_config_stat
+      when: false
+
+    - name: Debug
+      ansible.builtin.debug:
+        var: prometheus_config_file_host
+      when: false
+
+    - name: Upload new Prometheus config
+      ansible.builtin.copy:
+        src: "{{ prometheus_config_output }}"
+        dest: "{{ prometheus_config_file_host }}"
+        mode: "0644"
+      delegate_to: "{{ destination_host }}"
+      #when: rendered_prometheus_config_file.changed
+
+    - name: Get UID of Ansible user
+      ansible.builtin.command: id -u
+      register: prometheus_user_uid
+      delegate_to: "{{ destination_host }}"
+      changed_when: false
+
+    - name: Get GID of Ansible user
+      ansible.builtin.command: id -g
+      register: prometheus_user_gid
+      delegate_to: "{{ destination_host }}"
+      changed_when: false
+
+    - name: Render prometheus-compose.yaml from template
+      ansible.builtin.template:
+        src: "{{ docker_compose_template }}"
+        dest: "{{ docker_compose_output }}"
+        mode: "0644"
+      vars:
+        uid: "{{ prometheus_user_uid.stdout }}"
+        gid: "{{ prometheus_user_gid.stdout }}"
+      delegate_to: localhost
+      register: prometheus_compose_file
+
+    - name: Deploy Prometheus through Portainer
+      ansible.builtin.include_role:
+        name: deploy-through-portainer
+      vars:
+        portainer_endpoint_name: "{{ destination_host }}"
+        portainer_stack_name: "{{ service_name }}"
+        service_compose_file: "{{ docker_compose_output }}"
+        service_compose_file_changed: "{{ prometheus_compose_file.changed }}"
+
+    - name: Add DNS rewrite for Prometheus
+      ansible.builtin.include_role:
+        name: add-dns-rewrite
+      vars:
+        rewrite_domain: "{{ subdomain }}.{{ cluster_domain }}"
+        rewrite_answer: "{{ hostvars[destination_host].ansible_host }}"
+
+    - name: Add Prometheus to Homer Dashboard
+      ansible.builtin.include_role:
+        name: add-to-homer
+      vars:
+        homer_service_name: "Services"
+        homer_item:
+          name: "Metrics"
+          subtitle: "Prometheus"
+          url: "https://{{ subdomain }}.{{ cluster_domain }}"
+          target: "_blank"
+          logo: "logo-prometheus.svg"

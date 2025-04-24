@@ -1,0 +1,12 @@
+[
+{% for host in groups['docker_hosts'] %}
+  {
+    "targets": ["{{ hostvars[host].ansible_host }}:{{ cadvisor_port }}"],
+    "labels": {
+      "host": "{{ host }}"
+    }
+  }{% if not loop.last %},
+{% endif %}
+{% endfor %}
+
+]
