@@ -1,11 +1,11 @@
 ---
-- name: Deploy Monitoring through Portainer
+- name: Update Prometheus targets
   hosts: management
   gather_facts: false
   become: no
   vars:
     service_name: "prometheus"
-    destination_host: "management"
+    destination_host: "monitoring"
     storage_base_dir: "/storage/{{ service_name }}"
     prometheus_config_output: "{{ output_path }}/{{ cluster_name }}/configs/prometheus/prometheus-config.yaml"
     prometheus_docker_targets_template: "prometheus/prometheus-docker-targets.json.j2"

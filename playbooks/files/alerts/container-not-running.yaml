@@ -1,0 +1,12 @@
+groups:
+  - name: container.rules
+    rules:
+      - alert: ContainerNotRunning
+        expr: |
+          time() - container_last_seen{job="cadvisor"} > 60
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Container not running"
+          description: "Container '{{ $labels.name }}' on host '{{ $labels.instance }}' is not reporting metrics (down?)"

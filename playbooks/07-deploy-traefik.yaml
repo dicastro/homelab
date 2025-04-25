@@ -13,12 +13,12 @@
     ports:
       - ext: "{{ traefik_web_port }}"
         int: 80
-      - ext: "{{ traefik_web_port }}"
+      - ext: "{{ traefik_websecure_port }}"
         int: 443
       - ext: "{{ traefik_dashboard_port }}"
         int: 8080
     storage_base_dir: "/storage/traefik"
-    docker_hosts_list: "{{ query('inventory_hostnames', 'docker_hosts') }}"
+    docker_hosts_list: "{{ query('inventory_hostnames', 'docker_hosts') | difference(['vpn']) }}"
     traefik_config_template: "traefik/traefik.yaml.j2"
     traefik_config_output: "{{ output_path }}/{{ cluster_name }}/configs/traefik/traefik.yaml"
     traefik_dynamic_template: "traefik/traefik-dynamic.yaml.j2"

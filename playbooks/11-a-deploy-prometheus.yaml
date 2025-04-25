@@ -1,11 +1,11 @@
 ---
-- name: Deploy Monitoring through Portainer
+- name: Deploy Prometheus through Portainer
   hosts: management
   gather_facts: false
   become: no
   vars:
     service_name: "prometheus"
-    destination_host: "management"
+    destination_host: "monitoring"
     container_name: "{{ service_name }}"
     subdomain: "metrics"
     docker_compose_template: "prometheus/prometheus-compose.yaml.j2"
@@ -26,6 +26,8 @@
     prometheus_config_file_host: "{{ prometheus_config_dir }}/prometheus.yaml"
     prometheus_config_file_container: "/etc/prometheus/prometheus.yaml"
     prometheus_data_dir: "{{ storage_base_dir }}"
+    prometheus_alerts_dir_host: "{{ storage_base_dir }}/alerts"
+    prometheus_alerts_dir_container: "/alerts"
     volumes:
       - src: "{{ prometheus_config_file_host }}"
         dst: "{{ prometheus_config_file_container }}:ro"
@@ -35,6 +37,9 @@
         type: dir
       - src: "{{ prometheus_data_dir }}"
         dst: "/prometheus"
+        type: dir
+      - src: "{{ prometheus_alerts_dir_host }}"
+        dst: "{{ prometheus_alerts_dir_container }}"
         type: dir
   vars_files:
     - vars/common.yaml

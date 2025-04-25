@@ -1,19 +1,18 @@
 version: '3.8'
 
 services:
-  prometheus:
-    image: {{ prometheus_image }}
+  alertmanager:
+    image: {{ alertmanager_image }}
     container_name: {{ container_name }}
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.prometheus.rule=Host(`{{ subdomain }}.{{ cluster_domain }}`)"
-      - "traefik.http.routers.prometheus.entrypoints=websecure"
-      - "traefik.http.routers.prometheus.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.alertmanager.rule=Host(`{{ subdomain }}.{{ cluster_domain }}`)"
+      - "traefik.http.routers.alertmanager.entrypoints=websecure"
+      - "traefik.http.routers.alertmanager.tls.certresolver=letsencrypt"
     user: "{{ uid }}:{{ gid }}"
     command:
-      - "--config.file={{ prometheus_config_file_container }}"
-      - "--storage.tsdb.retention.time={{ prometheus_retention }}"
-      - "--web.enable-lifecycle"
+      - "--config.file={{ alertmanager_config_file_container }}"
+      - "--storage.path={{ alertmanager_storage_dir_container }}"
     restart: unless-stopped
     volumes:
 {% for volume in volumes %}

@@ -12,3 +12,12 @@ scrape_configs:
       - source_labels: [name]
         regex: ''
         action: drop
+
+alerting:
+  alertmanagers:
+    - static_configs:
+      - targets:
+        - '{{ hostvars['monitoring'].ansible_host }}:{{ alertmanager_frontend_port }}'
+
+rule_files:
+  - "{{ prometheus_alerts_dir_container }}/*.yaml"

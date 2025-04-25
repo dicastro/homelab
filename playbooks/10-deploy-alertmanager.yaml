@@ -1,0 +1,121 @@
+---
+- name: Deploy AlertManager through Portainer
+  hosts: management
+  gather_facts: false
+  become: no
+  vars:
+    service_name: "alertmanager"
+    destination_host: "monitoring"
+    container_name: "{{ service_name }}"
+    subdomain: "alerts"
+    docker_compose_template: "alertmanager/alertmanager-compose.yaml.j2"
+    docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/alertmanager-compose.yaml"
+    ports:
+      - ext: "{{ alertmanager_frontend_port }}"
+        int: 9093
+    storage_base_dir: "/storage/{{ service_name }}"
+
+    alertmanager_config_template: "alertmanager/alertmanager-config.yaml.j2"
+    alertmanager_config_output: "{{ output_path }}/{{ cluster_name }}/configs/alertmanager/alertmanager-config.yaml"
+    alertmanager_config_dir: "{{ storage_base_dir }}/config"
+    alertmanager_config_file_host: "{{ alertmanager_config_dir }}/alertmanager.yaml"
+    alertmanager_config_file_container: "/etc/alertmanager/alertmanager.yaml"
+    alertmanager_storage_dir_host: "{{ storage_base_dir }}/data"
+    alertmanager_storage_dir_container: "/alertmanager"
+    volumes:
+      - src: "{{ alertmanager_config_file_host }}"
+        dst: "{{ alertmanager_config_file_container }}:ro"
+        type: file
+      - src: "{{ alertmanager_storage_dir_host }}"
+        dst: "{{ alertmanager_storage_dir_container }}"
+        type: dir
+  vars_files:
+    - vars/common.yaml
+    - "{{ inventory_dir }}/docker-images.yaml"
+    - "{{ inventory_dir }}/secrets.yaml"
+    - "{{ inventory_dir }}/docker-ports.yaml"
+
+  tasks:
+    - name: Get portainer token and endpoints map
+      ansible.builtin.include_role:
+        name: get-portainer-token-and-endpoints-map
+
+    - name: Ensure AlertManager directories exist
+      ansible.builtin.include_role:
+        name: ensure-directories-exist
+      vars:
+        target_hosts: "{{ destination_host }}"
+
+    - name: Ensure the base directory for AlertManager output config exists
+      ansible.builtin.file:
+        path: "{{ alertmanager_config_output | dirname }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+
+    - name: Render alertmanager-config.yaml from template
+      ansible.builtin.template:
+        src: "{{ alertmanager_config_template }}"
+        dest: "{{ alertmanager_config_output }}"
+        mode: "0644"
+      delegate_to: localhost
+      register: rendered_alertmanager_config_file
+
+    - name: Upload new AlertManager config
+      ansible.builtin.copy:
+        src: "{{ alertmanager_config_output }}"
+        dest: "{{ alertmanager_config_file_host }}"
+        mode: "0644"
+      delegate_to: "{{ destination_host }}"
+      when: rendered_alertmanager_config_file.changed
+
+    - name: Get UID of Ansible user
+      ansible.builtin.command: id -u
+      register: alertmanager_user_uid
+      delegate_to: "{{ destination_host }}"
+      changed_when: false
+
+    - name: Get GID of Ansible user
+      ansible.builtin.command: id -g
+      register: alertmanager_user_gid
+      delegate_to: "{{ destination_host }}"
+      changed_when: false
+
+    - name: Render alertmanager-compose.yaml from template
+      ansible.builtin.template:
+        src: "{{ docker_compose_template }}"
+        dest: "{{ docker_compose_output }}"
+        mode: "0644"
+      vars:
+        uid: "{{ alertmanager_user_uid.stdout }}"
+        gid: "{{ alertmanager_user_gid.stdout }}"
+      delegate_to: localhost
+      register: rendered_compose_file
+
+    - name: Deploy AlertManager through Portainer
+      ansible.builtin.include_role:
+        name: deploy-through-portainer
+      vars:
+        portainer_endpoint_name: "{{ destination_host }}"
+        portainer_stack_name: "{{ service_name }}"
+        service_compose_file: "{{ docker_compose_output }}"
+        service_compose_file_changed: "{{ rendered_compose_file.changed }}"
+
+    - name: Add DNS rewrite for AlertManager
+      ansible.builtin.include_role:
+        name: add-dns-rewrite
+      vars:
+        rewrite_domain: "{{ subdomain }}.{{ cluster_domain }}"
+        rewrite_answer: "{{ hostvars[destination_host].ansible_host }}"
+
+    - name: Add Prometheus to Homer Dashboard
+      ansible.builtin.include_role:
+        name: add-to-homer
+      vars:
+        homer_service_name: "Services"
+        homer_item:
+          name: "Alerts"
+          subtitle: "AlertManager"
+          url: "https://{{ subdomain }}.{{ cluster_domain }}"
+          target: "_blank"
+          logo: "logo-alertmanager.svg"
