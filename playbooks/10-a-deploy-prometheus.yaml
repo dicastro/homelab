@@ -68,30 +68,13 @@
       delegate_to: localhost
       register: rendered_prometheus_config_file
 
-    - name: Debug
-      ansible.builtin.debug:
-        var: prometheus_config_output
-      when: false
-
-    - name: Stat source file
-      ansible.builtin.stat:
-        path: "{{ prometheus_config_output }}"
-      delegate_to: localhost
-      register: prometheus_config_stat
-      when: false
-
-    - name: Debug
-      ansible.builtin.debug:
-        var: prometheus_config_file_host
-      when: false
-
     - name: Upload new Prometheus config
       ansible.builtin.copy:
         src: "{{ prometheus_config_output }}"
         dest: "{{ prometheus_config_file_host }}"
         mode: "0644"
       delegate_to: "{{ destination_host }}"
-      #when: rendered_prometheus_config_file.changed
+      when: rendered_prometheus_config_file.changed
 
     - name: Get UID of Ansible user
       ansible.builtin.command: id -u
