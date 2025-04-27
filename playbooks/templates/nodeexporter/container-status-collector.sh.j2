@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# Output path for the textfile collector
+OUT_FILE="{{ nodeexporter_textfilecollector_dir_host }}/{{ nodeexporter_textfilecollector_filename }}"
+TMP_FILE="$(mktemp)"
+
+# List all containers (running or not) and get their name and status
+docker ps -a --format '{{'{{'}}.Names{{'}}'}} {{'{{'}}.State{{'}}'}}' | while read -r container_name container_state; do
+  # Set metric value based on container state
+  if [[ "$container_state" == "running" ]]; then
+    value=1
+  else
+    value=0
+  fi
+
+  echo "container_status{name=\"${container_name}\",state=\"${container_state}\"} ${value}" >> "$TMP_FILE"
+done
+
+# Atomically replace the old file
+mv "$TMP_FILE" "$OUT_FILE"

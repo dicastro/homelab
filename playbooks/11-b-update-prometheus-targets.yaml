@@ -8,12 +8,16 @@
     destination_host: "monitoring"
     storage_base_dir: "/storage/{{ service_name }}"
     prometheus_config_output: "{{ output_path }}/{{ cluster_name }}/configs/prometheus/prometheus-config.yaml"
-    prometheus_docker_targets_template: "prometheus/prometheus-docker-targets.json.j2"
-    prometheus_docker_targets_output: "{{ output_path }}/{{ cluster_name }}/configs/prometheus/prometheus-docker-targets.json"
+    prometheus_cadvisor_targets_template: "prometheus/prometheus-cadvisor-targets.json.j2"
+    prometheus_cadvisor_targets_output: "{{ output_path }}/{{ cluster_name }}/configs/prometheus/prometheus-cadvisor-targets.json"
+    prometheus_nodeexporter_targets_template: "prometheus/prometheus-nodeexporter-targets.json.j2"
+    prometheus_nodeexporter_targets_output: "{{ output_path }}/{{ cluster_name }}/configs/prometheus/prometheus-nodeexporter-targets.json"
     prometheus_config_dir: "{{ storage_base_dir }}/config"
-    prometheus_docker_targets_filename_host: "docker-targets.json"
+    prometheus_cadvisor_targets_filename_host: "cadvisor-targets.json"
+    prometheus_nodeexporter_targets_filename_host: "nodeexporter-targets.json"
     prometheus_docker_targets_dir_host: "{{ prometheus_config_dir }}/file_sd"
-    prometheus_docker_targets_file_host: "{{ prometheus_docker_targets_dir_host }}/{{ prometheus_docker_targets_filename_host }}"
+    prometheus_cadvisor_targets_file_host: "{{ prometheus_docker_targets_dir_host }}/{{ prometheus_cadvisor_targets_filename_host }}"
+    prometheus_nodeexporter_targets_file_host: "{{ prometheus_docker_targets_dir_host }}/{{ prometheus_nodeexporter_targets_filename_host }}"
   vars_files:
     - vars/common.yaml
     - "{{ inventory_dir }}/docker-images.yaml"
@@ -28,18 +32,34 @@
         mode: "0755"
       delegate_to: localhost
 
-    - name: Render prometheus-docker-targets.json from template
+    - name: Render prometheus-cadvisor-targets.json from template
       ansible.builtin.template:
-        src: "{{ prometheus_docker_targets_template }}"
-        dest: "{{ prometheus_docker_targets_output }}"
+        src: "{{ prometheus_cadvisor_targets_template }}"
+        dest: "{{ prometheus_cadvisor_targets_output }}"
         mode: "0644"
       delegate_to: localhost
-      register: rendered_prometheus_docker_targets_file
+      register: rendered_prometheus_cadvisor_targets_file
 
-    - name: Upload new Prometheus docker-targets.json
+    - name: Upload new Prometheus cadvisor-targets.json
       ansible.builtin.copy:
-        src: "{{ prometheus_docker_targets_output }}"
-        dest: "{{ prometheus_docker_targets_file_host }}"
+        src: "{{ prometheus_cadvisor_targets_output }}"
+        dest: "{{ prometheus_cadvisor_targets_file_host }}"
         mode: "0644"
       delegate_to: "{{ destination_host }}"
-      when: rendered_prometheus_docker_targets_file.changed
+      when: rendered_prometheus_cadvisor_targets_file.changed
+
+    - name: Render prometheus-nodeexporter-targets.json from template
+      ansible.builtin.template:
+        src: "{{ prometheus_nodeexporter_targets_template }}"
+        dest: "{{ prometheus_nodeexporter_targets_output }}"
+        mode: "0644"
+      delegate_to: localhost
+      register: rendered_prometheus_nodeexporter_targets_file
+
+    - name: Upload new Prometheus nodeexporter-targets.json
+      ansible.builtin.copy:
+        src: "{{ prometheus_nodeexporter_targets_output }}"
+        dest: "{{ prometheus_nodeexporter_targets_file_host }}"
+        mode: "0644"
+      delegate_to: "{{ destination_host }}"
+      when: rendered_prometheus_nodeexporter_targets_file.changed

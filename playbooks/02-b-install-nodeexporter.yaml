@@ -1,0 +1,80 @@
+---
+- name: Install Node Exporter
+  hosts: docker_hosts
+  become: no
+  vars:
+    storage_base_dir: "/storage/nodeexporter"
+    nodeexporter_textfilecollector_dir_host: "{{ storage_base_dir }}/textfile_collector"
+    nodeexporter_textfilecollector_dir_container: "/var/lib/node_exporter/textfile_collector"
+    nodeexporter_textfilecollector_template: "nodeexporter/container-status-collector.sh.j2"
+    nodeexporter_textfilecollector_script_output: "{{ output_path }}/{{ cluster_name }}/configs/nodeexporter/container-status-collector.sh"
+    nodeexporter_textfilecollector_script: "/usr/local/bin/container-status-collector.sh"
+    nodeexporter_textfilecollector_filename: "container-status.prom"
+    volumes:
+      - src: "{{ nodeexporter_textfilecollector_dir_host }}"
+        dst: "{{ nodeexporter_textfilecollector_dir_container }}"
+        type: dir
+  vars_files:
+    - vars/common.yaml
+    - "{{ inventory_dir }}/docker-images.yaml"
+    - "{{ inventory_dir }}/secrets.yaml"
+    - "{{ inventory_dir }}/docker-ports.yaml"
+
+  tasks:
+    - name: Ensure Node Exporter directories exist
+      ansible.builtin.include_role:
+        name: ensure-directories-exist
+      vars:
+        target_hosts: "docker_hosts"
+
+    - name: Ensure the base directory for Node Exporter output config exists
+      ansible.builtin.file:
+        path: "{{ nodeexporter_textfilecollector_script_output | dirname }}"
+        state: directory
+        mode: "0755"
+      delegate_to: "localhost"
+
+    - name: Render container-status-collector.sh from template
+      ansible.builtin.template:
+        src: "{{ nodeexporter_textfilecollector_template }}"
+        dest: "{{ nodeexporter_textfilecollector_script_output }}"
+        mode: "0755"
+      delegate_to: "localhost"
+
+    - name: Upload new container-status-collector.sh script
+      ansible.builtin.copy:
+        src: "{{ nodeexporter_textfilecollector_script_output }}"
+        dest: "{{ nodeexporter_textfilecollector_script }}"
+        mode: "0755"
+
+    - name: Create cron job to update container_status.prom
+      ansible.builtin.cron:
+        name: "Update {{ nodeexporter_textfilecollector_filename }} every minute"
+        minute: "*"
+        job: "{{ nodeexporter_textfilecollector_script }}"
+
+    - name: Get UID of Ansible user
+      ansible.builtin.command: id -u
+      register: user_uid
+      changed_when: false
+
+    - name: Get GID of Ansible user
+      ansible.builtin.command: id -g
+      register: user_gid
+      changed_when: false
+
+    - name: Run node-exporter container
+      community.docker.docker_container:
+        name: nodeexporter
+        image: "{{ nodeexporter_image }}"
+        restart_policy: unless-stopped
+        network_mode: "host"
+        pid_mode: "host"
+        user: "{{ user_uid.stdout }}:{{ user_gid.stdout }}"
+        volumes:
+          - "/:/host:ro,rslave"
+          - "{{ nodeexporter_textfilecollector_dir_host }}:{{ nodeexporter_textfilecollector_dir_container }}"
+        command:
+          - "--path.rootfs=/host"
+          - "--collector.textfile.directory={{ nodeexporter_textfilecollector_dir_container }}"
+        state: started

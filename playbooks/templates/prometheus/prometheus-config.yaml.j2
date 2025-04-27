@@ -5,7 +5,17 @@ scrape_configs:
   - job_name: 'cadvisor'
     file_sd_configs:
       - files:
-          - {{ prometheus_docker_targets_file_container }}
+          - {{ prometheus_cadvisor_targets_file_container }}
+        refresh_interval: 30s
+    metric_relabel_configs:
+      # drop anything without a `name` label (non-Docker processes)
+      - source_labels: [name]
+        regex: ''
+        action: drop
+  - job_name: 'nodeexporter'
+    file_sd_configs:
+      - files:
+          - {{ prometheus_nodeexporter_targets_file_container }}
         refresh_interval: 30s
     metric_relabel_configs:
       # drop anything without a `name` label (non-Docker processes)

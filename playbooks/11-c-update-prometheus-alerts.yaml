@@ -7,13 +7,6 @@
     service_name: "prometheus"
     destination_host: "monitoring"
     storage_base_dir: "/storage/{{ service_name }}"
-    prometheus_config_output: "{{ output_path }}/{{ cluster_name }}/configs/prometheus/prometheus-config.yaml"
-    prometheus_docker_targets_template: "prometheus/prometheus-docker-targets.json.j2"
-    prometheus_docker_targets_output: "{{ output_path }}/{{ cluster_name }}/configs/prometheus/prometheus-docker-targets.json"
-    prometheus_config_dir: "{{ storage_base_dir }}/config"
-    prometheus_docker_targets_filename_host: "docker-targets.json"
-    prometheus_docker_targets_dir_host: "{{ prometheus_config_dir }}/file_sd"
-    prometheus_docker_targets_file_host: "{{ prometheus_docker_targets_dir_host }}/{{ prometheus_docker_targets_filename_host }}"
     prometheus_alerts_dir_host: "{{ storage_base_dir }}/alerts"
   vars_files:
     - vars/common.yaml
