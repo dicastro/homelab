@@ -1,0 +1,16 @@
+{{ define "__text_alert_list" }}{{ range . }}
+<b>{{ .Annotations.summary | html }}</b>
+
+{{ .Annotations.description | html }}
+
+<a href="{{ .GeneratorURL | html }}">View in Prometheus</a>
+{{ end }}{{ end }}
+
+{{ define "telegram.custom.message" -}}
+{{ if gt (len .Alerts.Firing) 0 -}}
+<b>ACTIVE</b>
+{{- template "__text_alert_list" .Alerts.Firing }}{{ end }}
+{{ if gt (len .Alerts.Resolved) 0 }}
+RESOLVED
+{{ template "__text_alert_list" .Alerts.Resolved }}{{ end }}
+{{ end }}

@@ -1,6 +1,8 @@
 ---
 - name: Create homelab VMs
   hosts: vms
+  serial: 1
+  strategy: linear
   gather_facts: no
   become: no
   vars:
@@ -28,6 +30,12 @@
           --ip {{ ansible_host }}
           --gateway-ip {{ vm.gateway_ip }}
           --dns-servers "{{ vm.dns_servers }}"
+          {% if vm.usb_manufacturer is defined %}
+          --usb-manufacturer "{{ vm.usb_manufacturer }}"
+          {% endif %}
+          {% if vm.usb_product is defined %}
+          --usb-product "{{ vm.usb_product }}"
+          {% endif %}
           --proxmox-host {{ proxmox_host }}
           --proxmox-user {{ proxmox_user }}
           --output-format ansible

@@ -32,6 +32,8 @@ def parse_args():
     parser.add_argument("--ip", help="Static IP address")
     parser.add_argument("--gateway-ip", required=True, help="Gateway IP")
     parser.add_argument("--dns-servers", default="1.1.1.1 8.8.8.8", help="DNS servers")
+    parser.add_argument("--usb-manufacturer", help="USB manufacturer name (e.g., 'American Power Conversion')")
+    parser.add_argument("--usb-product", help="USB product name (e.g., 'Back-UPS 700')")
     parser.add_argument("--proxmox-host", required=True, help="Proxmox hostname or IP")
     parser.add_argument("--proxmox-user", required=True, help="Proxmox user")
     parser.add_argument("--proxmox-auth-realm", choices=["pam", "linux"], default="pam", help="Proxmox authentication realm")
@@ -339,6 +341,52 @@ def ensure_ssh_key(user):
         return f.read().strip()
 
 
+def fuzzy_to_regex(text):
+    if not text:
+        return None
+
+    #e.g., "Back UPS 700" → ".*Back.*UPS.*700.*"
+    parts = re.split(r"\s+", text.strip())
+
+    return ".*" + ".*".join(re.escape(p) for p in parts) + ".*"
+
+
+def find_usb_device(proxmox_host, proxmox_auth, node_name, manufacturer_match, product_match):
+    usb_devices = proxmox_get(proxmox_host, proxmox_auth, f"/nodes/{node_name}/hardware/usb")
+
+    manufacturer_regex = re.compile(fuzzy_to_regex(manufacturer_match), re.IGNORECASE) if manufacturer_match else None
+    product_regex = re.compile(fuzzy_to_regex(product_match), re.IGNORECASE) if product_match else None
+
+    matches = []
+
+    for usb_device in usb_devices:
+        if manufacturer_regex and not manufacturer_regex.search(usb_device.get("manufacturer", "")):
+            continue
+
+        if product_regex and not product_regex.search(usb_device.get("product", "")):
+            continue
+
+        matches.append(usb_device)
+
+    if not matches:
+        available_devices = ', '.join([f'{usb_device.get("manufacturer")}|{usb_device.get("product")}' for usb_device in usb_devices])
+
+        log_message(f"No USB device matched the given manufacturer/product patterns. Available USB devices: {available_devices}")
+
+        end_script("failure", "No USB device matched the given manufacturer/product patterns.")
+
+    if len(matches) > 1:
+        matched_devices = ', '.join([f'{usb_device.get("manufacturer")}|{usb_device.get("product")}' for usb_device in matches])
+
+        log_message(f"Multiple USB devices matched the given manufacturer/product patterns. Please refine your patterns to match only one. Matched USB devices: {matched_devices}")
+
+        end_script("failure", "Multiple USB devices matched. Please refine your patterns to match only one.")
+
+    matched = matches[0]
+
+    return f"{matched['vendid']}:{matched['prodid']}"
+
+
 def create_vm(proxmox_host, proxmox_auth):
     node_name = get_first_node(proxmox_host, proxmox_auth)
 
@@ -376,6 +424,12 @@ def create_vm(proxmox_host, proxmox_auth):
         "agent": 1
     }
 
+    if args.usb_manufacturer or args.usb_product:
+        device_id = find_usb_device(proxmox_host, proxmox_auth, node_name, args.usb_manufacturer , args.usb_product)
+        usb_param = f"host={device_id}"
+        vm_config["usb0"] = usb_param
+        log_message(f"USB device passed through configured: usb0: {usb_param}")
+
     vm_create_task = proxmox_post(proxmox_host, proxmox_auth, f"/nodes/{node_name}/qemu", vm_config)
     wait_for_proxmox_task(proxmox_host, proxmox_auth, node_name, vm_create_task, f"Create VM {vm_name} ({vm_id})")
     log_message(f"Created VM {vm_name} ({vm_id})!")
@@ -405,7 +459,8 @@ def create_vm(proxmox_host, proxmox_auth):
 
     # Start VM
     log_message(f"Starting VM {vm_name}...")
-    proxmox_post(proxmox_host, proxmox_auth, f"/nodes/{node_name}/qemu/{vm_id}/status/start", None)
+    vm_start_task = proxmox_post(proxmox_host, proxmox_auth, f"/nodes/{node_name}/qemu/{vm_id}/status/start", None)
+    wait_for_proxmox_task(proxmox_host, proxmox_auth, node_name, vm_start_task, f"Start VM {vm_name} ({vm_id})")
     log_message(f"VM {vm_name} started")
 
 

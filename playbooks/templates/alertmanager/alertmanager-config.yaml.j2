@@ -2,14 +2,43 @@ global:
   resolve_timeout: 5m
 
 route:
-  receiver: 'default'
+  receiver: 'telegram-notifications'
 
 receivers:
-  - name: 'default'
-    # Example: Send email, Slack, webhook, etc.
-    # email_configs:
-    #   - to: 'you@example.com'
-    # slack_configs:
-    #   - channel: '#alerts'
+  - name: 'telegram-notifications'
+    telegram_configs:
+      - bot_token: '{{ telegram_notification_bot_token }}'
+        chat_id: {{ telegram_chat_id }}
+        parse_mode: 'HTML'
+        message: '{{'{{'}} template "telegram.custom.message" . {{'}}'}}'
+  # Email notification configuration is currently not used.
+  #
+  # Mailrise (1.4.0) was used as an SMTP relay, but Alertmanager (v0.28.1) failed to authenticate with it.
+  # Mailrise supports SMTP authentication using LOGIN and PLAIN methods (over TLS),
+  # and Alertmanager is expected to support these methods — but authentication still failed.
+  #
+  # A possible workaround is to set up a dedicated VM running Postfix as a mail relay.
+  # Postfix would be configured to require authentication exposing only PLAIN (over TLS),
+  # which Alertmanager should be able to use. If that succeeds, Postfix can then forward
+  # the messages to Mailrise.
+  #
+  # This setup moves the SMTP compatibility burden from Alertmanager to Postfix,
+  # which handles mail protocols more flexibly and reliably.
+  - name: 'mailrise-notifications'
+    email_configs:
+      - to: 'telegram@mailrise.xyz'
+        from: 'alertmanager@0134148.xyz'
+        smarthost: '{{ hostvars['management'].ansible_host }}:{{ mailrise_port }}'
+        auth_username: '{{ mailrise_admin_user }}'
+        auth_password: '{{ mailrise_admin_password }}'
+        auth_identity: '{{ mailrise_admin_user }}'
+        require_tls: true
+        tls_config:
+          ca_file: '{{ alertmanager_mailrise_ca_file_container }}'
+          insecure_skip_verify: false
+        send_resolved: true
+
+templates:
+  - '{{ alertmanager_templates_dir_container }}/*.tmpl'
 
 inhibit_rules: []

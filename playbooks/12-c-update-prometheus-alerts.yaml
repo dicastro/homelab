@@ -21,7 +21,7 @@
         dest: "{{ prometheus_alerts_dir_host }}/{{ item | basename }}"
         mode: "0644"
       with_fileglob:
-        - "files/alerts/*.yaml"
+        - "files/prometheus/alerts/*.yaml"
       delegate_to: "{{ destination_host }}"
 
     - name: Reload Prometheus config

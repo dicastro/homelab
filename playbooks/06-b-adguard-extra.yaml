@@ -1,0 +1,25 @@
+---
+- name: AdGuardHome Homer configuration
+  hosts: management
+  gather_facts: false
+  become: no
+  vars:
+    subdomain: "dns"
+  vars_files:
+    - vars/common.yaml
+    - "{{ inventory_dir }}/docker-images.yaml"
+    - "{{ inventory_dir }}/secrets.yaml"
+    - "{{ inventory_dir }}/docker-ports.yaml"
+
+  tasks:
+    - name: Add AdGuard Home to Homer Dashboard
+      ansible.builtin.include_role:
+        name: add-to-homer
+      vars:
+        homer_service_name: "Services"
+        homer_item:
+          name: "DNS"
+          subtitle: "AdGuard Home"
+          url: "https://{{ subdomain }}.{{ cluster_domain }}"
+          target: "_blank"
+          logo: "logo-adguardhome.svg"

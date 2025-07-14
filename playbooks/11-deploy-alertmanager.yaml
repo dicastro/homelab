@@ -22,12 +22,26 @@
     alertmanager_config_file_container: "/etc/alertmanager/alertmanager.yaml"
     alertmanager_storage_dir_host: "{{ storage_base_dir }}/data"
     alertmanager_storage_dir_container: "/alertmanager"
+    alertmanager_certs_dir_host: "{{ storage_base_dir }}/certs"
+    alertmanager_certs_dir_container: "/etc/alertmanager/certs"
+    alertmanager_mailrise_ca_filename: "{{ cluster_name }}_root_ca_crt.pem"
+    alertmanager_mailrise_ca_file_local: "{{ output_path }}/{{ cluster_name }}/certificates/{{ alertmanager_mailrise_ca_filename }}"
+    alertmanager_mailrise_ca_file_host: "{{ alertmanager_certs_dir_host }}/{{ alertmanager_mailrise_ca_filename }}"
+    alertmanager_mailrise_ca_file_container: "{{ alertmanager_certs_dir_container }}/{{ alertmanager_mailrise_ca_filename }}"
+    alertmanager_templates_dir_host: "{{ storage_base_dir }}/templates"
+    alertmanager_templates_dir_container: "/etc/alertmanager/templates"
     volumes:
       - src: "{{ alertmanager_config_file_host }}"
         dst: "{{ alertmanager_config_file_container }}:ro"
         type: file
       - src: "{{ alertmanager_storage_dir_host }}"
         dst: "{{ alertmanager_storage_dir_container }}"
+        type: dir
+      - src: "{{ alertmanager_certs_dir_host }}"
+        dst: "{{ alertmanager_certs_dir_container }}"
+        type: dir
+      - src: "{{ alertmanager_templates_dir_host }}"
+        dst: "{{ alertmanager_templates_dir_container }}"
         type: dir
   vars_files:
     - vars/common.yaml
@@ -69,6 +83,13 @@
       delegate_to: "{{ destination_host }}"
       when: rendered_alertmanager_config_file.changed
 
+    - name: Ensure CA certificate is copied to Proxmox
+      ansible.builtin.copy:
+        src: "{{ alertmanager_mailrise_ca_file_local }}"
+        dest: "{{ alertmanager_mailrise_ca_file_host }}"
+        mode: "644"
+      delegate_to: "{{ destination_host }}"
+
     - name: Get UID of Ansible user
       ansible.builtin.command: id -u
       register: alertmanager_user_uid
@@ -91,6 +112,15 @@
         gid: "{{ alertmanager_user_gid.stdout }}"
       delegate_to: localhost
       register: rendered_compose_file
+
+    - name: Copy all *.tmpl files containing alertmanager templates to the Alertmanager host
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "{{ alertmanager_templates_dir_host }}/{{ item | basename }}"
+        mode: "0644"
+      with_fileglob:
+        - "files/alertmanager/templates/*.tmpl"
+      delegate_to: "{{ destination_host }}"
 
     - name: Deploy AlertManager through Portainer
       ansible.builtin.include_role:

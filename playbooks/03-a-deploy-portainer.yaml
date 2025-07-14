@@ -76,22 +76,3 @@
           Content-Type: "application/json"
         status_code: 200
       when: admin_check.status == 404
-
-    - name: Add DNS rewrite for Portainer
-      ansible.builtin.include_role:
-        name: add-dns-rewrite
-      vars:
-        rewrite_domain: "{{ subdomain }}.{{ cluster_domain }}"
-        rewrite_answer: "{{ hostvars[inventory_hostname].ansible_host }}"
-
-    - name: Add Portainer to Homer Dashboard
-      ansible.builtin.include_role:
-        name: add-to-homer
-      vars:
-        homer_service_name: "Services"
-        homer_item:
-          name: "Portainer"
-          subtitle: "Portainer"
-          url: "https://{{ subdomain }}.{{ cluster_domain }}"
-          target: "_blank"
-          logo: "logo-portainer.svg"

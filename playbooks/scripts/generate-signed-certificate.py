@@ -9,7 +9,7 @@ import json
 # Default expiration time (100 years)
 DEFAULT_EXPIRATION_DAYS = 365 * 100
 
-REQUIRED_PACKAGES = ["cryptography"]
+REQUIRED_PACKAGES = ["cryptography", "fasteners"]
 
 
 def parse_args():
@@ -94,6 +94,8 @@ check_and_install_packages()
 
 
 import datetime
+import tempfile
+from fasteners import InterProcessLock
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -317,22 +319,33 @@ def get_log_details(ca_crt_path, signed_crt_path, signed_key_path):
     return {"ca-crt-path": ca_crt_path, "signed-crt-path": signed_crt_path, "signed-key-path": signed_key_path}
 
 
+def with_ca_lock(callback):
+    lock_path = os.path.join(tempfile.gettempdir(), "ca.lock")
+    lock = InterProcessLock(lock_path)
+
+    with lock:
+        return callback()
+
+
 def generate_signed_certificate():
     signed_crt_path, signed_key_path = get_signed_cert_paths(args.signed_alias)
     ca_crt_path, ca_key_path, ca_serial_path = get_ca_paths(args.ca_alias)
 
-    if _path_not_exists(ca_crt_path) or _path_not_exists(ca_key_path) or _path_not_exists(ca_serial_path):
-        log_message("CA not found, generating new CA...", output_format=args.output_format)
+    def create_ca_if_missing():
+        if _path_not_exists(ca_crt_path) or _path_not_exists(ca_key_path) or _path_not_exists(ca_serial_path):
+            log_message("CA not found, generating new CA...", output_format=args.output_format)
 
-        if not args.ca_cn:
-            end_script("failure", "--ca-cn is required when generating a new CA", output_format=args.output_format)
+            if not args.ca_cn:
+                end_script("failure", "--ca-cn is required when generating a new CA", output_format=args.output_format)
 
-        ca_crt, ca_key = generate_ca(args.ca_alias, args.ca_cn, args.ca_expiration_days, ca_crt_path, ca_key_path, ca_serial_path)
+            generate_ca(args.ca_alias, args.ca_cn, args.ca_expiration_days, ca_crt_path, ca_key_path, ca_serial_path)
 
-        log_message("New CA generated!", output_format=args.output_format)
-    else:
-        ca_crt = load_crt(ca_crt_path)
-        ca_key = load_key(ca_key_path)
+            log_message("New CA generated!", output_format=args.output_format)
+
+    with_ca_lock(create_ca_if_missing)
+
+    ca_crt = load_crt(ca_crt_path)
+    ca_key = load_key(ca_key_path)
 
     signed_crt = load_crt(signed_crt_path)
 

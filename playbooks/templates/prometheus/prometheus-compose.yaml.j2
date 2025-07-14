@@ -14,6 +14,7 @@ services:
       - "--config.file={{ prometheus_config_file_container }}"
       - "--storage.tsdb.retention.time={{ prometheus_retention }}"
       - "--web.enable-lifecycle"
+      - "--web.external-url=https://{{ subdomain }}.{{ cluster_domain }}"
     restart: unless-stopped
     volumes:
 {% for volume in volumes %}
