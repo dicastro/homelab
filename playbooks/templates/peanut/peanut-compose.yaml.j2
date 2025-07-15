@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  peanut:
+    image: {{ peanut_image }}
+    container_name: {{ container_name }}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.rule=Host(`{{ subdomain }}.{{ cluster_domain }}`)"
+      - "traefik.http.routers.prometheus.entrypoints=websecure"
+      - "traefik.http.routers.prometheus.tls.certresolver=letsencrypt"
+    restart: unless-stopped
+    environment:
+      - WEB_PORT=8080
+      - WEB_USERNAME={{ peanut_admin_user }}
+      - WEB_PASSWORD={{ peanut_admin_password }}
+    volumes:
+{% for volume in volumes %}
+      - "{{ volume.src }}:{{ volume.dst }}"
+{% endfor %}
+    ports:
+{% for port in ports %}
+      - "{{ port.ext }}:{{ port.int }}"
+{% endfor %}
+    networks:
+      - frontend
+
+networks:
+  frontend:
+    external: true

@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  nutserver:
+    image: {{ nutserver_image }}
+    container_name: {{ container_name }}
+    restart: unless-stopped
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
+    environment:
+      - API_USER={{ nutserver_admin_user }}
+      - API_PASSWORD={{ nutserver_admin_password }}
+      - DESCRIPTION=Homelab
+      - DRIVER=usbhid-ups
+      - GROUP=nut
+      - MAXAGE=30
+      - NAME=homelab
+      - PORT=auto
+      - SDORDER=-1
+      - SERVER=master
+      - USER=nut
+    ports:
+{% for port in ports %}
+      - "{{ port.ext }}:{{ port.int }}"
+{% endfor %}

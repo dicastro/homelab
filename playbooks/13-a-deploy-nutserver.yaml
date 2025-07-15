@@ -1,0 +1,49 @@
+---
+- name: Deploy Pienut through Portainer
+  hosts: management
+  gather_facts: false
+  become: no
+  vars:
+    service_name: "nutserver"
+    destination_host: "ups"
+    container_name: "{{ service_name }}"
+    docker_compose_template: "nutserver/nutserver-compose.yaml.j2"
+    docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/nutserver-compose.yaml"
+    ports:
+      - ext: "{{ nutserver_port }}"
+        int: 3493
+    storage_base_dir: "/storage/{{ service_name }}"
+    volumes:
+  vars_files:
+    - vars/common.yaml
+    - "{{ inventory_dir }}/docker-images.yaml"
+    - "{{ inventory_dir }}/secrets.yaml"
+    - "{{ inventory_dir }}/docker-ports.yaml"
+
+  tasks:
+    - name: Get portainer token and endpoints map
+      ansible.builtin.include_role:
+        name: get-portainer-token-and-endpoints-map
+
+    - name: Ensure Nutserver directories exist
+      ansible.builtin.include_role:
+        name: ensure-directories-exist
+      vars:
+        target_hosts: "{{ destination_host }}"
+
+    - name: Render nutserver-compose.yaml from template
+      ansible.builtin.template:
+        src: "{{ docker_compose_template }}"
+        dest: "{{ docker_compose_output }}"
+        mode: "0644"
+      delegate_to: localhost
+      register: nutserver_compose_file
+
+    - name: Deploy Nutserver through Portainer
+      ansible.builtin.include_role:
+        name: deploy-through-portainer
+      vars:
+        portainer_endpoint_name: "{{ destination_host }}"
+        portainer_stack_name: "{{ service_name }}"
+        service_compose_file: "{{ docker_compose_output }}"
+        service_compose_file_changed: "{{ nutserver_compose_file.changed }}"

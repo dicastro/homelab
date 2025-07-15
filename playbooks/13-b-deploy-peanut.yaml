@@ -1,0 +1,99 @@
+---
+- name: Deploy Pienut through Portainer
+  hosts: management
+  gather_facts: false
+  become: no
+  vars:
+    service_name: "peanut"
+    destination_host: "ups"
+    container_name: "{{ service_name }}"
+    subdomain: "ups"
+    docker_compose_template: "peanut/peanut-compose.yaml.j2"
+    docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/peanut-compose.yaml"
+    ports:
+      - ext: "{{ peanut_frontend_port }}"
+        int: 8080
+    storage_base_dir: "/storage/{{ service_name }}"
+    peanut_config_template: "peanut/peanut-config.yaml.j2"
+    peanut_config_output: "{{ output_path }}/{{ cluster_name }}/configs/peanut/peanut-config.yaml"
+    peanut_config_dir: "{{ storage_base_dir }}/config"
+    peanut_config_file_host: "{{ peanut_config_dir }}/settings.yaml"
+    volumes:
+      - src: "{{ peanut_config_dir }}"
+        dst: "/config"
+        type: dir
+  vars_files:
+    - vars/common.yaml
+    - "{{ inventory_dir }}/docker-images.yaml"
+    - "{{ inventory_dir }}/secrets.yaml"
+    - "{{ inventory_dir }}/docker-ports.yaml"
+
+  tasks:
+    - name: Get portainer token and endpoints map
+      ansible.builtin.include_role:
+        name: get-portainer-token-and-endpoints-map
+
+    - name: Ensure PeaNut directories exist
+      ansible.builtin.include_role:
+        name: ensure-directories-exist
+      vars:
+        target_hosts: "{{ destination_host }}"
+
+    - name: Ensure the base directory for PeaNut output config exists
+      ansible.builtin.file:
+        path: "{{ peanut_config_output | dirname }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+
+    - name: Render peanut-config.yaml from template
+      ansible.builtin.template:
+        src: "{{ peanut_config_template }}"
+        dest: "{{ peanut_config_output }}"
+        mode: "0644"
+      delegate_to: localhost
+      register: rendered_peanut_config_file
+
+    - name: Upload new PeaNut config
+      ansible.builtin.copy:
+        src: "{{ peanut_config_output }}"
+        dest: "{{ peanut_config_file_host }}"
+        mode: "0644"
+      delegate_to: "{{ destination_host }}"
+      when: rendered_peanut_config_file.changed
+
+    - name: Render peanut-compose.yaml from template
+      ansible.builtin.template:
+        src: "{{ docker_compose_template }}"
+        dest: "{{ docker_compose_output }}"
+        mode: "0644"
+      delegate_to: localhost
+      register: peanut_compose_file
+
+    - name: Deploy PeaNut through Portainer
+      ansible.builtin.include_role:
+        name: deploy-through-portainer
+      vars:
+        portainer_endpoint_name: "{{ destination_host }}"
+        portainer_stack_name: "{{ service_name }}"
+        service_compose_file: "{{ docker_compose_output }}"
+        service_compose_file_changed: "{{ peanut_compose_file.changed }}"
+
+    - name: Add DNS rewrite for PeaNut
+      ansible.builtin.include_role:
+        name: add-dns-rewrite
+      vars:
+        rewrite_domain: "{{ subdomain }}.{{ cluster_domain }}"
+        rewrite_answer: "{{ hostvars[destination_host].ansible_host }}"
+
+    - name: Add PeaNut to Homer Dashboard
+      ansible.builtin.include_role:
+        name: add-to-homer
+      vars:
+        homer_service_name: "Services"
+        homer_item:
+          name: "UPS"
+          subtitle: "PeaNut"
+          url: "https://{{ subdomain }}.{{ cluster_domain }}"
+          target: "_blank"
+          logo: "logo-pienut.svg"

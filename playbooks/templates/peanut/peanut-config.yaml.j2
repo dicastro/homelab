@@ -1,0 +1,12 @@
+NUT_SERVERS:
+  - HOST: {{ hostvars['ups'].ansible_host }}
+    PORT: {{ nutserver_port }}
+    USERNAME: {{ nutserver_admin_user }}
+    PASSWORD: {{ nutserver_admin_password }}
+INFLUX_HOST: ''
+INFLUX_TOKEN: ''
+INFLUX_ORG: ''
+INFLUX_BUCKET: ''
+INFLUX_INTERVAL: 10
+DATE_FORMAT: DD/MM/YYYY
+TIME_FORMAT: 24-hour
