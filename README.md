@@ -2,22 +2,21 @@
 
 ## TODOs
 
+- create playbook to deploy nut client in proxmox host
 - include labels (monitoring.enabled) to all containers to facilitate querying metrics
-- create playbook to deploy alertmanager
-- create playbook deploy loki
-- create playbook to deploy promtail
-- create playbook to deploy grafana
-- create playbook to deploy diun
-- create playbook to deploy nut server
-- create playbook to deploy pienut
+- add to the storage path a subfolder with the environment. Define the environment as a property in the configuration (e.g. `san`)
 - create playbook to deploy vaultwarden
-- migrate data from vaultwarden in homeassistant in rpi
 - create playbook to deploy homeassistant
+- migrate data from vaultwarden in homeassistant in rpi
 - migrate data from homeassistant in rpi
 - create playbook to deploy service to track car expenses
 - create playbook to deploy service to track recipes
 - create playbook to deploy owncloud
 - create playbook to deploy immitch
+- create playbook to deploy diun
+- create playbook deploy loki
+- create playbook to deploy promtail
+- create playbook to deploy grafana
 - install proxmox backup server in laptop hp envy 17
 - create playbook to configure backups for VMs
 - create a variable portainer_destination_host and use it in 03-a-deploy-portainer.yaml (in `hosts`), 03-b-create-endpoints.yaml (in `hosts` and setting fact `portainer_api_url_remote`), role deploy-through-portainer (setting fact `portainer_api_url_remote`)
@@ -164,3 +163,128 @@ e.g.
 (.venv) > ansible-vault decrypt ./inventories/prod/secrets.yaml
 ```
 
+## How to display certificate details
+
+```
+openssl x509 -in /etc/docker/certs/ca.pem -noout -text
+```
+
+## How to install manually qemu-guest-agent
+
+(This has already been included in the playbook and script to create VMs and has been delegated to cloud-init through custom vendor configuration)
+
+```
+apt update && apt install -y qemu-guest-agent && systemctl enable --now qemu-guest-agent
+```
+
+## How to flush DNS cache
+
+```
+sudo systemd-resolve --flush-caches
+```
+
+## How to Render an alertmanager template using `amtool`
+
+Having the `data.json` file placed at `/tmp` with the following contents:
+
+```
+{
+  "receiver": "telegram-notifications",
+  "status": "firing",
+  "alerts": [
+    {
+      "status": "firing",
+      "labels": {
+        "alertname": "ContainerNotRunning",
+        "host": "machine1",
+        "instance": "1.2.3.4:9876",
+        "job": "nodeexporter",
+        "name": "actualbudget",
+        "severity": "critical",
+        "state": "exited"
+      },
+      "annotations": {
+        "description": "Container 'actualbudget' on host 'machine1' not running ('exited')",
+        "summary": "Container not running"
+      },
+      "startsAt": "2025-07-09T04:48:30.309Z",
+      "endsAt": "2025-07-10T06:26:30.309Z",
+      "generatorURL": "https://prometheus.domain.com/graph?g0.expr=container_status+%3D%3D+0&g0.tab=1",
+      "fingerprint": "a1b2c3d4e5f6a1b2"
+    }
+  ],
+  "groupLabels": {
+    "alertname": "ContainerNotRunning"
+  },
+  "commonLabels": {
+    "alertname": "ContainerNotRunning",
+    "host": "machine1",
+    "instance": "1.2.3.4:9876",
+    "job": "nodeexporter",
+    "name": "actualbudget",
+    "severity": "critical",
+    "state": "exited"
+  },
+  "commonAnnotations": {
+    "description": "Container 'actualbudget' on host 'machine1' not running ('exited')",
+    "summary": "Container not running"
+  },
+  "externalURL": "https://prometheus.domain.com",
+  "version": "4",
+  "groupKey": "{}:{alertname=\"ContainerNotRunning\"}",
+  "truncatedAlerts": 0
+}
+```
+
+Run the following command to render a template:
+
+```
+amtool template render --template.glob='/etc/alertmanager/templates/*.tmpl' --template.data=/tmp/data.json --template.text='{{ template "telegram.custom.message" . }}'
+```
+
+To debug and display what is loaded in the context when rendering the template:
+
+```
+amtool template render --template.glob='/etc/alertmanager/templates/*.tmpl' --template.data='/tmp/data2.json' --template.text='{{ printf "%#v" . }}'
+```
+
+## How to reset usb of back-ups (BX700va-gr)
+
+[source](https://community.se.com/t5/APC-UPS-for-Home-and-Office-Forum/Lost-USB-comms-after-a-killpower-BX700U/td-p/293653)
+
+1. Disconnect any attached load.
+2. Unplug the UPS from the wall socket.
+3. Disconnect the UPS' internal battery.
+4. Push and hold the "On" button on the UPS for 5 seconds
+5. Reconnect internal battery.
+6. Plug UPS in to known good power source.
+7. Turn UPS on.
+
+## How to list usb devices
+
+To list all usb devices run:
+
+```
+> lsusb
+```
+
+This is a sample output of the command:
+
+```
+Bus 001 Device 001: ID 1a1a:0001 Linux Foundation 3.0 root hub
+Bus 002 Device 001: ID 1a2b:0001 American Power Conversion Uninterruptible Power Supply
+Bus 003 Device 001: ID 1a3c:0001 MediaTek Inc. Wireless_Device
+Bus 004 Device 001: ID 1a4d:0001 Linux Foundation 2.0 root hub
+Bus 005 Device 001: ID 1a5e:0001 Linux Foundation 3.0 root hub
+Bus 006 Device 001: ID 1a6f:0001 Linux Foundation 2.0 root hub
+```
+
+Run the following command to get details of the specific usb device
+
+```
+> lsusb -v -s <BUS>:<DEVICE>
+
+e.g.
+
+> lsusb -v -s 2:1
+```
