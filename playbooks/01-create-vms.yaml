@@ -22,8 +22,8 @@
 
     - name: Upload cloud-init snippet
       ansible.builtin.copy:
-        src: "snippets/ubuntu-user-data.yaml"
-        dest: "{{ pve_snippets_dir_host }}/ubuntu-user-data.yaml"
+        src: "snippets/ubuntu-vendor-data.yaml"
+        dest: "{{ pve_snippets_dir_host }}/ubuntu-vendor-data.yaml"
         mode: "0755"
       delegate_to: pve
 

@@ -135,7 +135,6 @@ os.makedirs(BASE_SSHKEY_PATH, exist_ok=True)
 
 KEY_SIZE = 4096
 PROXMOX_ISO_PATH = "/var/lib/vz/template/iso"
-PROXMOX_SNIPPETS_PATH = "/var/lib/vz/snippets"
 
 
 def get_proxmox_auth(proxmox_host, proxmox_user, proxmox_password, proxmox_auth_realm):
@@ -444,7 +443,7 @@ def create_vm(proxmox_host, proxmox_auth):
         "cipassword": args.password,
         "sshkeys": urlparse.quote(ensure_ssh_key(user), safe=''),
         "nameserver": args.dns_servers,
-        "cicustom": "vendor=local:snippets/ubuntu-user-data.yaml"
+        "cicustom": "vendor=local:snippets/ubuntu-vendor-data.yaml"
     }
 
     if args.dhcp:

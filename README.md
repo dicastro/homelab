@@ -3,6 +3,7 @@
 ## TODOs
 
 - create playbook to deploy nut client in proxmox host
+- refactor `create-vm.py` script to accept an argument to specify the `cicustom` argument
 - include labels (monitoring.enabled) to all containers to facilitate querying metrics
 - add to the storage path a subfolder with the environment. Define the environment as a property in the configuration (e.g. `san`)
 - create playbook to deploy vaultwarden
