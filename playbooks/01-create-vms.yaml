@@ -7,11 +7,26 @@
   become: no
   vars:
     vmssshkey_path: "{{ output_path }}/{{ cluster_name }}"
+    pve_snippets_dir_host: "/var/lib/vz/snippets"
   vars_files:
     - vars/common.yaml
     - "{{ inventory_dir }}/secrets.yaml"
 
   tasks:
+    - name: Ensure snippets directory exists
+      ansible.builtin.file:
+        path: "{{ pve_snippets_dir_host }}"
+        state: directory
+        mode: "0755"
+      delegate_to: pve
+
+    - name: Upload cloud-init snippet
+      ansible.builtin.copy:
+        src: "snippets/ubuntu-user-data.yaml"
+        dest: "{{ pve_snippets_dir_host }}/ubuntu-user-data.yaml"
+        mode: "0755"
+      delegate_to: pve
+
     - name: Create vm
       ansible.builtin.command:
         cmd: >

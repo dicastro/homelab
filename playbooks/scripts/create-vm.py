@@ -135,6 +135,7 @@ os.makedirs(BASE_SSHKEY_PATH, exist_ok=True)
 
 KEY_SIZE = 4096
 PROXMOX_ISO_PATH = "/var/lib/vz/template/iso"
+PROXMOX_SNIPPETS_PATH = "/var/lib/vz/snippets"
 
 
 def get_proxmox_auth(proxmox_host, proxmox_user, proxmox_password, proxmox_auth_realm):
@@ -278,7 +279,7 @@ def ensure_ubuntu_image(proxmox_host, proxmox_auth, node_name, ubuntu_codename):
 
         wait_for_proxmox_task(proxmox_host, proxmox_auth, node_name, download_iso_task, f"Download {iso_filename}")
 
-    return f"/var/lib/vz/template/iso/{iso_filename}"
+    return f"{PROXMOX_ISO_PATH}/{iso_filename}"
 
 
 def resize_vm_disk(proxmox_host, proxmox_auth, node_name, vm_id, disk_name, disk_size_gb):
@@ -442,7 +443,8 @@ def create_vm(proxmox_host, proxmox_auth):
         "ciuser": user,
         "cipassword": args.password,
         "sshkeys": urlparse.quote(ensure_ssh_key(user), safe=''),
-        "nameserver": args.dns_servers
+        "nameserver": args.dns_servers,
+        "cicustom": "vendor=local:snippets/ubuntu-user-data.yaml"
     }
 
     if args.dhcp:
