@@ -34,6 +34,9 @@ def parse_args():
     parser.add_argument("--dns-servers", default="1.1.1.1 8.8.8.8", help="DNS servers")
     parser.add_argument("--usb-manufacturer", help="USB manufacturer name (e.g., 'American Power Conversion')")
     parser.add_argument("--usb-product", help="USB product name (e.g., 'Back-UPS 700')")
+    parser.add_argument("--start-on-boot", action=argparse.BooleanOptionalAction, help="Start the VM on boot")
+    parser.add_argument("--startup-delay-seconds", type=int, default=-1, help="Startup delay in seconds")
+    parser.add_argument("--cloud-init-vendor-config", help="Cloud-Init vendor configuration file path")
     parser.add_argument("--proxmox-host", required=True, help="Proxmox hostname or IP")
     parser.add_argument("--proxmox-user", required=True, help="Proxmox user")
     parser.add_argument("--proxmox-auth-realm", choices=["pam", "linux"], default="pam", help="Proxmox authentication realm")
@@ -399,6 +402,7 @@ def create_vm(proxmox_host, proxmox_auth):
     user = args.user
     ip = args.ip
     gateway_ip = args.gateway_ip
+    start_on_boot = 1 if args.start_on_boot else 0
 
     if validate_vm_exists(proxmox_host, proxmox_auth, vm_id, vm_name):
         end_script("success", f"VM {vm_name} ({vm_id}) already exists.")
@@ -421,8 +425,12 @@ def create_vm(proxmox_host, proxmox_auth):
         "ide2": f"{storage}:cloudinit",
         "boot": "c",
         "bootdisk": "scsi0",
-        "agent": 1
+        "agent": 1,
+        "onboot": start_on_boot
     }
+
+    if 0 < args.startup_delay_seconds:
+        vm_config["startup"] = f"up={args.startup_delay_seconds}"
 
     if args.usb_manufacturer or args.usb_product:
         device_id = find_usb_device(proxmox_host, proxmox_auth, node_name, args.usb_manufacturer , args.usb_product)
@@ -438,13 +446,21 @@ def create_vm(proxmox_host, proxmox_auth):
 
     # Configure cloud-init
     log_message(f"Configuring Cloud-Init for VM {vm_name}...")
+
+    cicustom = ""
+
     cloudinit_config = {
         "ciuser": user,
         "cipassword": args.password,
         "sshkeys": urlparse.quote(ensure_ssh_key(user), safe=''),
-        "nameserver": args.dns_servers,
-        "cicustom": "vendor=local:snippets/ubuntu-vendor-data.yaml"
+        "nameserver": args.dns_servers
     }
+
+    if args.cloud_init_vendor_config:
+        cicustom = f"vendor={args.cloud_init_vendor_config}"
+
+    if cicustom:
+        cloudinit_config["cicustom"] = cicustom
 
     if args.dhcp:
         cloudinit_config["ipconfig0"] = "dhcp"

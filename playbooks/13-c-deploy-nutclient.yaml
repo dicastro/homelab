@@ -7,6 +7,7 @@
     nutclient_notification_script_template: "nutclient/ups-homelab-notify.sh.j2"
     nutclient_notification_script_output: "{{ output_path }}/{{ cluster_name }}/configs/nutclient/ups-homelab-notify.sh"
     nutclient_notification_script_host: /usr/local/bin/ups-homelab-notify.sh
+    nutclient_shutdown_script: /usr/local/sbin/nut-safe-shutdown
     nutclient_shutdown_command: /sbin/shutdown -h +0
   vars_files:
     - vars/common.yaml
@@ -32,6 +33,24 @@
         mode: "0640"
       notify: Restart Nut Monitor
 
+    - name: Compile nut-safe-shutdown.c
+      run_once: true
+      shell: |
+        gcc -o files/nutclient/scripts/nut-safe-shutdown files/nutclient/scripts/nut-safe-shutdown.c
+      args:
+        creates: files/nutclient/scripts/nut-safe-shutdown
+      delegate_to: localhost
+      register: compiled_nutclient_safe_shutdown_script
+
+    - name: Upload nut-safe-shutdown
+      copy:
+        src: files/nutclient/scripts/nut-safe-shutdown
+        dest: "{{ nutclient_shutdown_script }}"
+        mode: '4755'
+        owner: root
+        group: root
+      when: compiled_nutclient_safe_shutdown_script.changed
+
     - name: Ensure the base directory for Nut Client output notification script exists
       ansible.builtin.file:
         path: "{{ nutclient_notification_script_output | dirname }}"
@@ -46,11 +65,12 @@
         mode: "0755"
       vars:
         ups: "{{ nut_server_name }}@{{ hostvars['ups'].ansible_host }}"
-        notifications_endpoint: http://{{ hostvars['ups'].ansible_host }}:{{ apprise_frontend_port }}/notify/apprise
+        notifications_endpoint: "http://{{ hostvars['management'].ansible_host }}:{{ apprise_frontend_port }}/notify/apprise"
         notification_shutdown_message_title: "WARNING - Proxmox Shutdown"
-        notification_shutdown_message_body: "Power outage detected. Proxmox will be shut down immediately."
-        battery_charge_threshold_percentage: 70
-        ups_poll_interval_seconds: 30
+        notification_shutdown_message_body: "Power outage detected. Proxmox will be shut down immediately"
+        battery_charge_threshold_percentage: 90
+        ups_poll_interval_seconds: 10
+        shutdown_command: "{{ nutclient_shutdown_script }}"
       delegate_to: localhost
       register: rendered_nutclient_notify_script_file
 

@@ -4,6 +4,7 @@ UPSNAME="{{ nut_server_name }}"
 UPS="{{ ups }}"
 BATTERY_CHARGE_THRESHOLD={{ battery_charge_threshold_percentage | default(60) }}
 POLL_INTERVAL={{ ups_poll_interval_seconds | default(30) }}
+SHUTDOWN_COMMAND={{ nutclient_shutdown_script }}
 
 shutdown_if_critical() {
   BATTERY_CHARGE=$(upsc "$UPS" battery.charge 2>/dev/null)
@@ -25,14 +26,16 @@ shutdown_if_critical() {
   fi
 
   if [ "$BATTERY_CHARGE" -le "$BATTERY_CHARGE_THRESHOLD" ]; then
-    logger -t ups-notify "$UPSNAME: Battery charge is under threshold ($BATTERY_CHARGE % <= $BATTERY_CHARGE_THRESHOLD %). Triggering shutdown."
+    logger -t ups-notify "$UPSNAME: Battery charge is under threshold ($BATTERY_CHARGE % <= $BATTERY_CHARGE_THRESHOLD %). Notifying system shutdown..."
 
     for i in {1..3}; do
-      curl -s -X POST -H "Content-Type: application/json" -d '{{'{'}} "body": "{{ notification_shutdown_message_body }}", "title":"{{ notification_shutdown_message_title }}" {{'}'}}' {{ notifications_endpoint }} && break
+      curl -s -X POST -H "Content-Type: application/json" -o /dev/null -d '{{'{'}} "body": "{{ notification_shutdown_message_body }}", "title": "{{ notification_shutdown_message_title }}" {{'}'}}' {{ notifications_endpoint }} && break
       sleep 2
     done
 
-    {{ nutclient_shutdown_command }}
+    logger -t ups-notify "$UPSNAME: Shutdown has been notified. Triggering shutdown..."
+
+    $SHUTDOWN_COMMAND
   else
     logger -t ups-notify "$UPSNAME: Battery charge still sufficient ($BATTERY_CHARGE % > $BATTERY_CHARGE_THRESHOLD % | Battery runtime: $BATTERY_RUNTIME sec). Waiting $POLL_INTERVAL sec before next check..."
   fi

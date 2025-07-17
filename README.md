@@ -2,11 +2,8 @@
 
 ## TODOs
 
-- include a notification in `ups-homelab-notify.sh` to notify via apprise
-- check pve bios to see if _Restore on AC Power Loss_ (or similar) is enabled
-- change `create-vm.py` script to configure VMs to start on boot (I don't know if I should configure specific boot order)
-- refactor `create-vm.py` script to accept an argument to specify the `cicustom` argument
 - include labels (monitoring.enabled) to all containers to facilitate querying metrics
+- change node-exporter script to detect docker daemon down or node-exporter container down and notify through apprise
 - add to the storage path a subfolder with the environment. Define the environment as a property in the configuration (e.g. `san`)
 - create playbook to deploy vaultwarden
 - create playbook to deploy homeassistant
@@ -16,6 +13,7 @@
 - create playbook to deploy service to track recipes
 - create playbook to deploy owncloud
 - create playbook to deploy immitch
+- check pve bios to see if _Restore on AC Power Loss_ (or similar) is enabled
 - create playbook to deploy diun
 - create playbook deploy loki
 - create playbook to deploy promtail
@@ -305,11 +303,11 @@ e.g.
 ### How to get UPS information with nut-client
 
 ```
-upsc <NUT_SERVER_NAME>@<NUT_SERVER_IP> battery.runtime
-upsc <NUT_SERVER_NAME>@<NUT_SERVER_IP> battery.charge
-upsc <NUT_SERVER_NAME>@<NUT_SERVER_IP> battery.charge.low
-upsc <NUT_SERVER_NAME>@<NUT_SERVER_IP> ups.status
-upsc <NUT_SERVER_NAME>@<NUT_SERVER_IP> ups.load
+upsc <NUT_SERVER_NAME>@<NUT_SERVER_IP> battery.runtime 2>/dev/null
+upsc <NUT_SERVER_NAME>@<NUT_SERVER_IP> battery.charge 2>/dev/null
+upsc <NUT_SERVER_NAME>@<NUT_SERVER_IP> battery.charge.low 2>/dev/null
+upsc <NUT_SERVER_NAME>@<NUT_SERVER_IP> ups.status 2>/dev/null
+upsc <NUT_SERVER_NAME>@<NUT_SERVER_IP> ups.load 2>/dev/null
 ```
 
 ### How to see logs of nut-monitor
@@ -325,3 +323,13 @@ journalctl -t ups-notify
 ```
 
 > To follow logs add `-f` to the previous command
+
+### Why `nut-safe-shutdown` C program
+
+The configured script that is executed when there is an UPS event is run with `nut` user. There is some logic in the script to gracefully shut down the host, but this needs root permissions. In proxmox host there is no sudo or possibility to add permissions to `nut` user to be able to shut down the host invoking `/sbin/shutdown` command.
+
+`nut-safe-shutdown` is a C program that fakes that the shutdown is run by root, in this way `nut` user will be able to invoke the script.
+
+> It is important to remark that in order to work, the C program has to be owned by `root:root` and the file mode has to be `4755`.
+
+The C program is not using `/sbin/shutdonw` because it won't work if for example there is any active ssh session. However, using `/bin/systemctl poweroff -i` will do the work independently of the active ssh sessions.
