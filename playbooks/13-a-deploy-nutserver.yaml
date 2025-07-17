@@ -1,5 +1,5 @@
 ---
-- name: Deploy Pienut through Portainer
+- name: Deploy Nut Server through Portainer
   hosts: management
   gather_facts: false
   become: no
@@ -25,7 +25,7 @@
       ansible.builtin.include_role:
         name: get-portainer-token-and-endpoints-map
 
-    - name: Ensure Nutserver directories exist
+    - name: Ensure Nut Server directories exist
       ansible.builtin.include_role:
         name: ensure-directories-exist
       vars:
@@ -39,7 +39,7 @@
       delegate_to: localhost
       register: nutserver_compose_file
 
-    - name: Deploy Nutserver through Portainer
+    - name: Deploy Nut Server through Portainer
       ansible.builtin.include_role:
         name: deploy-through-portainer
       vars:

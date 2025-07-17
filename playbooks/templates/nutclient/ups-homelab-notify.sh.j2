@@ -1,0 +1,59 @@
+#!/bin/bash
+
+UPSNAME="{{ nut_server_name }}"
+UPS="{{ ups }}"
+BATTERY_CHARGE_THRESHOLD={{ battery_charge_threshold_percentage | default(60) }}
+POLL_INTERVAL={{ ups_poll_interval_seconds | default(30) }}
+
+shutdown_if_critical() {
+  BATTERY_CHARGE=$(upsc "$UPS" battery.charge 2>/dev/null)
+  BATTERY_RUNTIME=$(upsc "$UPS" battery.runtime 2>/dev/null)
+  BATTERY_CHARGE_LOW=$(upsc "$UPS" battery.charge.low 2>/dev/null)
+  STATUS=$(upsc "$UPS" ups.status 2>/dev/null)
+
+  logger -t ups-notify "$UPSNAME: Checking UPS status..."
+  logger -t ups-notify "$UPSNAME: Charge=$BATTERY_CHARGE %, Runtime=$BATTERY_RUNTIME sec, ChargeLow=$BATTERY_CHARGE_LOW %, Status=$STATUS"
+
+  if echo "$STATUS" | grep -q "OL"; then
+    logger -t ups-notify "$UPSNAME: Power has been restored. Cancelling shutdown check."
+    exit 0
+  fi
+
+  if [ "$BATTERY_CHARGE" -le "$BATTERY_CHARGE_LOW" ]; then
+    logger -t ups-notify "$UPSNAME: Battery charge ($BATTERY_CHARGE %) is at or below low threshold ($BATTERY_CHARGE_LOW %). Letting SHUTDOWNCMD handle it."
+    exit 0
+  fi
+
+  if [ "$BATTERY_CHARGE" -le "$BATTERY_CHARGE_THRESHOLD" ]; then
+    logger -t ups-notify "$UPSNAME: Battery charge is under threshold ($BATTERY_CHARGE % <= $BATTERY_CHARGE_THRESHOLD %). Triggering shutdown."
+
+    for i in {1..3}; do
+      curl -s -X POST -H "Content-Type: application/json" -d '{{'{'}} "body": "{{ notification_shutdown_message_body }}", "title":"{{ notification_shutdown_message_title }}" {{'}'}}' {{ notifications_endpoint }} && break
+      sleep 2
+    done
+
+    {{ nutclient_shutdown_command }}
+  else
+    logger -t ups-notify "$UPSNAME: Battery charge still sufficient ($BATTERY_CHARGE % > $BATTERY_CHARGE_THRESHOLD % | Battery runtime: $BATTERY_RUNTIME sec). Waiting $POLL_INTERVAL sec before next check..."
+  fi
+}
+
+STATUS=$(upsc "$UPS" ups.status 2>/dev/null)
+
+if echo "$STATUS" | grep -q "OB"; then
+  logger -t ups-notify "$UPSNAME: ON_BATTERY event received."
+
+  while true; do
+    shutdown_if_critical
+    sleep "$POLL_INTERVAL"
+  done
+elif echo "$STATUS" | grep -q "OL"; then
+  logger -t ups-notify "$UPSNAME: ONLINE event received - power restored."
+  exit 0
+elif echo "$STATUS" | grep -q "LB"; then
+  logger -t ups-notify "$UPSNAME: LOW_BATTERY event received - SHUTDOWNCMD will be used."
+  exit 0
+else
+  logger -t ups-notify "Unknown power state ($STATUS). Exiting."
+  exit 0
+fi

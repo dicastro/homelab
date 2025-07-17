@@ -2,7 +2,9 @@
 
 ## TODOs
 
-- create playbook to deploy nut client in proxmox host
+- include a notification in `ups-homelab-notify.sh` to notify via apprise
+- check pve bios to see if _Restore on AC Power Loss_ (or similar) is enabled
+- change `create-vm.py` script to configure VMs to start on boot (I don't know if I should configure specific boot order)
 - refactor `create-vm.py` script to accept an argument to specify the `cicustom` argument
 - include labels (monitoring.enabled) to all containers to facilitate querying metrics
 - add to the storage path a subfolder with the environment. Define the environment as a property in the configuration (e.g. `san`)
@@ -249,7 +251,17 @@ To debug and display what is loaded in the context when rendering the template:
 amtool template render --template.glob='/etc/alertmanager/templates/*.tmpl' --template.data='/tmp/data2.json' --template.text='{{ printf "%#v" . }}'
 ```
 
-## How to reset usb of back-ups (BX700va-gr)
+## How to reconfigure Proxmox when changing router
+
+If the new router has a different IP (e.g. changing from 192.168.86.1 to 192.168.1.1) the following files have to be modified
+
+- `/etc/network/interfaces`
+- `/etc/hosts`
+- `/etc/resolv.conf`
+
+## UPS
+
+### How to reset usb of back-ups (BX700va-gr)
 
 [source](https://community.se.com/t5/APC-UPS-for-Home-and-Office-Forum/Lost-USB-comms-after-a-killpower-BX700U/td-p/293653)
 
@@ -261,7 +273,7 @@ amtool template render --template.glob='/etc/alertmanager/templates/*.tmpl' --te
 6. Plug UPS in to known good power source.
 7. Turn UPS on.
 
-## How to list usb devices
+### How to list usb devices
 
 To list all usb devices run:
 
@@ -289,3 +301,27 @@ e.g.
 
 > lsusb -v -s 2:1
 ```
+
+### How to get UPS information with nut-client
+
+```
+upsc <NUT_SERVER_NAME>@<NUT_SERVER_IP> battery.runtime
+upsc <NUT_SERVER_NAME>@<NUT_SERVER_IP> battery.charge
+upsc <NUT_SERVER_NAME>@<NUT_SERVER_IP> battery.charge.low
+upsc <NUT_SERVER_NAME>@<NUT_SERVER_IP> ups.status
+upsc <NUT_SERVER_NAME>@<NUT_SERVER_IP> ups.load
+```
+
+### How to see logs of nut-monitor
+
+```
+journalctl -u nut-monitor.service
+```
+
+### How to see logs of ups-notify script
+
+```
+journalctl -t ups-notify
+```
+
+> To follow logs add `-f` to the previous command

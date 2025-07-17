@@ -1,0 +1,106 @@
+---
+- name: Deploy Nut Client in Proxmox
+  hosts: pve
+  gather_facts: false
+  become: no
+  vars:
+    nutclient_notification_script_template: "nutclient/ups-homelab-notify.sh.j2"
+    nutclient_notification_script_output: "{{ output_path }}/{{ cluster_name }}/configs/nutclient/ups-homelab-notify.sh"
+    nutclient_notification_script_host: /usr/local/bin/ups-homelab-notify.sh
+    nutclient_shutdown_command: /sbin/shutdown -h +0
+  vars_files:
+    - vars/common.yaml
+    - "{{ inventory_dir }}/docker-images.yaml"
+    - "{{ inventory_dir }}/secrets.yaml"
+    - "{{ inventory_dir }}/docker-ports.yaml"
+
+  tasks:
+    - name: Install required packages
+      ansible.builtin.apt:
+        update_cache: yes
+        name:
+          - nut-client
+        state: present
+
+    - name: Configure nut.conf
+      ansible.builtin.copy:
+        dest: /etc/nut/nut.conf
+        content: |
+          MODE=netclient
+        owner: root
+        group: root
+        mode: "0640"
+      notify: Restart Nut Monitor
+
+    - name: Ensure the base directory for Nut Client output notification script exists
+      ansible.builtin.file:
+        path: "{{ nutclient_notification_script_output | dirname }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+
+    - name: Render ups-notify.sh from template
+      ansible.builtin.template:
+        src: "{{ nutclient_notification_script_template }}"
+        dest: "{{ nutclient_notification_script_output }}"
+        mode: "0755"
+      vars:
+        ups: "{{ nut_server_name }}@{{ hostvars['ups'].ansible_host }}"
+        notifications_endpoint: http://{{ hostvars['ups'].ansible_host }}:{{ apprise_frontend_port }}/notify/apprise
+        notification_shutdown_message_title: "WARNING - Proxmox Shutdown"
+        notification_shutdown_message_body: "Power outage detected. Proxmox will be shut down immediately."
+        battery_charge_threshold_percentage: 70
+        ups_poll_interval_seconds: 30
+      delegate_to: localhost
+      register: rendered_nutclient_notify_script_file
+
+    - name: Upload new Nut Client notification script
+      ansible.builtin.copy:
+        src: "{{ nutclient_notification_script_output }}"
+        dest: "{{ nutclient_notification_script_host }}"
+        mode: "0755"
+      when: rendered_nutclient_notify_script_file.changed
+
+    - name: Configure /etc/nut/upsmon.conf
+      ansible.builtin.copy:
+        dest: /etc/nut/upsmon.conf
+        content: |
+          MONITOR {{ nut_server_name }}@{{ hostvars['ups'].ansible_host }} 1 {{ nutserver_admin_user }} {{ nutserver_admin_password }} slave
+          SHUTDOWNCMD "{{ nutclient_shutdown_command }}"
+          NOTIFYCMD {{ nutclient_notification_script_host }}
+          NOTIFYFLAG ONBATT SYSLOG+EXEC
+          NOTIFYFLAG ONLINE SYSLOG+EXEC
+        owner: root
+        group: nut
+        mode: "0640"
+      notify: Restart Nut Monitor
+
+    - name: Configure /etc/nut/ups.conf (client doesn’t use it, but prevent service complaints)
+      ansible.builtin.copy:
+        dest: /etc/nut/ups.conf
+        content: ""
+        owner: root
+        group: nut
+        mode: "0640"
+      notify: Restart Nut Monitor
+
+    - name: Configure /etc/nut/upsd.conf (not used in netclient mode, but exists)
+      ansible.builtin.copy:
+        dest: /etc/nut/upsd.conf
+        content: ""
+        owner: root
+        group: nut
+        mode: "0640"
+      notify: Restart Nut Monitor
+
+    - name: Ensure Nut Monitor service is enabled and started
+      ansible.builtin.systemd:
+        name: nut-monitor
+        enabled: true
+        state: started
+
+  handlers:
+    - name: Restart Nut Monitor
+      ansible.builtin.systemd:
+        name: nut-monitor
+        state: restarted
