@@ -10,6 +10,8 @@
     nodeexporter_textfilecollector_script_output: "{{ output_path }}/{{ cluster_name }}/configs/nodeexporter/container-status-collector.sh"
     nodeexporter_textfilecollector_script: "/usr/local/bin/container-status-collector.sh"
     nodeexporter_textfilecollector_filename: "container-status.prom"
+    nodeexporter_container_name: "nodeexporter"
+    nodeexporter_textfilecollector_status_dir_host: "{{ storage_base_dir }}/status"
     volumes:
       - src: "{{ nodeexporter_textfilecollector_dir_host }}"
         dst: "{{ nodeexporter_textfilecollector_dir_container }}"
@@ -39,6 +41,11 @@
         src: "{{ nodeexporter_textfilecollector_template }}"
         dest: "{{ nodeexporter_textfilecollector_script_output }}"
         mode: "0755"
+      vars:
+        notifications_endpoint: "http://{{ hostvars['management'].ansible_host }}:{{ apprise_frontend_port }}/notify/apprise"
+        nodeexporter_container: "{{ nodeexporter_container_name }}"
+        prom_file: "{{ nodeexporter_textfilecollector_dir_host }}/{{ nodeexporter_textfilecollector_filename }}"
+        status_dir: "{{ nodeexporter_textfilecollector_status_dir_host }}"
       delegate_to: "localhost"
 
     - name: Upload new container-status-collector.sh script
@@ -65,7 +72,7 @@
 
     - name: Run node-exporter container
       community.docker.docker_container:
-        name: nodeexporter
+        name: "{{ nodeexporter_container_name }}"
         image: "{{ nodeexporter_image }}"
         restart_policy: unless-stopped
         network_mode: "host"

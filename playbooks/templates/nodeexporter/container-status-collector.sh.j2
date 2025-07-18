@@ -1,20 +1,79 @@
 #!/bin/bash
 
-# Output path for the textfile collector
-OUT_FILE="{{ nodeexporter_textfilecollector_dir_host }}/{{ nodeexporter_textfilecollector_filename }}"
-TMP_FILE="$(mktemp)"
+# === Config ===
+PROM_FILE="{{ prom_file }}"
+PROM_TMP_FILE="$(mktemp)"
+NOTIFICATIONS_ENDPOINT="{{ notifications_endpoint }}"
+NODE_EXPORTER_CONTAINER="{{ nodeexporter_container }}"
+STATUS_DIR="{{ status_dir }}"
+mkdir -p "$STATUS_DIR"
+DOCKER_STATUS_FILE="$STATUS_DIR/docker.status"
+NODE_EXPORTER_STATUS_FILE="$STATUS_DIR/nodeexporter.status"
 
-# List all containers (running or not) and get their name and status
-docker ps -a --format '{{'{{'}}.Names{{'}}'}} {{'{{'}}.State{{'}}'}}' | while read -r container_name container_state; do
-  # Set metric value based on container state
-  if [[ "$container_state" == "running" ]]; then
-    value=1
-  else
-    value=0
+notify() {
+  local title="$1"
+  local body="$2"
+  local max_attempts=3
+  local delay=2
+
+  logger -t node-exporter "Sending notification: $title - $body"
+
+  for attempt in $(seq 1 $max_attempts); do
+    if curl -s -X POST -H "Content-Type: application/json" -o /dev/null -d "{ \"title\": \"$title\", \"body\": \"$body\" }" $NOTIFICATIONS_ENDPOINT; then
+      logger -t node-exporter "Notification sent successfully: $title"
+      return 0
+    else
+      logger -t node-exporter "Notification attempt $attempt/$max_attempts failed. Retrying in $delay sec..."
+      sleep $delay
+    fi
+  done
+
+  logger -t node-exporter "Failed to send notification after $max_attempts attempts: $title"
+}
+
+# === Detect Docker Daemon Availability ===
+if docker info >/dev/null 2>&1; then
+  if [[ -f "$DOCKER_STATUS_FILE" && "$(cat "$DOCKER_STATUS_FILE")" == "down" ]]; then
+    notify "Docker Daemon Recovered" "Docker daemon is now running on $(hostname)."
   fi
+  echo "up" > "$DOCKER_STATUS_FILE"
+else
+  if [[ ! -f "$DOCKER_STATUS_FILE" || "$(cat "$DOCKER_STATUS_FILE")" == "up" ]]; then
+    notify "Docker Daemon Down" "The Docker daemon is not reachable on $(hostname)."
+  fi
+  echo "down" > "$DOCKER_STATUS_FILE"
+  exit 1
+fi
 
-  echo "container_status{name=\"${container_name}\",state=\"${container_state}\"} ${value}" >> "$TMP_FILE"
-done
+# === node-exporter Container Check ===
+if docker inspect --format '{{'{{'}} .State.Running {{'}}'}}' $NODE_EXPORTER_CONTAINER 2>/dev/null | grep -q true; then
+  if [[ -f "$NODE_EXPORTER_STATUS_FILE" && "$(cat "$NODE_EXPORTER_STATUS_FILE")" == "down" ]]; then
+    notify "node-exporter Recovered" "The 'node-exporter' container is now running on $(hostname)."
+  fi
+  echo "up" > "$NODE_EXPORTER_STATUS_FILE"
+else
+  if [[ ! -f "$NODE_EXPORTER_STATUS_FILE" || "$(cat "$NODE_EXPORTER_STATUS_FILE")" == "up" ]]; then
+    notify "node-exporter Down" "The 'node-exporter' container is not running on $(hostname)."
+  fi
+  echo "down" > "$NODE_EXPORTER_STATUS_FILE"
+fi
 
-# Atomically replace the old file
-mv "$TMP_FILE" "$OUT_FILE"
+# === Generate Prometheus .prom File ===
+{
+  echo "# HELP container_status Container running status"
+  echo "# TYPE container_status gauge"
+
+  docker ps -a --format '{{'{{'}}.Names{{'}}'}} {{'{{'}}.State{{'}}'}}' | while read -r container_name container_state; do
+    if [[ "$container_state" == "running" ]]; then
+      value=1
+    else
+      value=0
+    fi
+
+    echo "container_status{name=\"${container_name}\",state=\"${container_state}\"} ${value}"
+  done
+} > "$PROM_TMP_FILE"
+
+# === Atomic Replace ===
+mv "$PROM_TMP_FILE" "$PROM_FILE"
+logger -t node-exporter "Updated Prometheus metrics file at $PROM_FILE"

@@ -68,8 +68,8 @@
         notifications_endpoint: "http://{{ hostvars['management'].ansible_host }}:{{ apprise_frontend_port }}/notify/apprise"
         notification_shutdown_message_title: "WARNING - Proxmox Shutdown"
         notification_shutdown_message_body: "Power outage detected. Proxmox will be shut down immediately"
-        battery_charge_threshold_percentage: 90
-        ups_poll_interval_seconds: 10
+        battery_charge_threshold_percentage: 98
+        ups_poll_interval_seconds: 2
         shutdown_command: "{{ nutclient_shutdown_script }}"
       delegate_to: localhost
       register: rendered_nutclient_notify_script_file
