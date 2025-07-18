@@ -5,7 +5,7 @@
   become: no
   vars:
     nutclient_notification_script_template: "nutclient/ups-homelab-notify.sh.j2"
-    nutclient_notification_script_output: "{{ output_path }}/{{ cluster_name }}/configs/nutclient/ups-homelab-notify.sh"
+    nutclient_notification_script_output: "{{ cluster_output_path }}/configs/nutclient/ups-homelab-notify.sh"
     nutclient_notification_script_host: /usr/local/bin/ups-homelab-notify.sh
     nutclient_shutdown_script: /usr/local/sbin/nut-safe-shutdown
     nutclient_shutdown_command: /sbin/shutdown -h +0

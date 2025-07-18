@@ -8,7 +8,7 @@
     destination_host: "ups"
     container_name: "{{ service_name }}"
     docker_compose_template: "nutserver/nutserver-compose.yaml.j2"
-    docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/nutserver-compose.yaml"
+    docker_compose_output: "{{ cluster_output_path }}/docker-compose/nutserver-compose.yaml"
     ports:
       - ext: "{{ nutserver_port }}"
         int: 3493

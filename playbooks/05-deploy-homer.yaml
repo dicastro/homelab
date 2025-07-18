@@ -9,7 +9,7 @@
     container_name: "{{ service_name }}"
     subdomain: "home"
     docker_compose_template: "homer/homer-compose.yaml.j2"
-    docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/homer-compose.yaml"
+    docker_compose_output: "{{ cluster_output_path }}/docker-compose/homer-compose.yaml"
     ports:
       - ext: "{{ homer_frontend_port }}"
         int: 8080

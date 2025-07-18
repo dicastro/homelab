@@ -8,14 +8,14 @@
     destination_host: "management"
     container_name: "{{ service_name }}"
     docker_compose_template: "mailrise/mailrise-compose.yaml.j2"
-    docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/mailrise-compose.yaml"
+    docker_compose_output: "{{ cluster_output_path }}/docker-compose/mailrise-compose.yaml"
     ports:
       - ext: "{{ mailrise_port }}"
         int: 8025
     storage_base_dir: "/storage/mailrise"
     proxmox_notification_target_name: "{{ service_name }}"
     mailrise_config_template: "mailrise/mailrise.conf.j2"
-    mailrise_config_output: "{{ output_path }}/{{ cluster_name }}/configs/mailrise/mailrise.conf"
+    mailrise_config_output: "{{ cluster_output_path }}/configs/mailrise/mailrise.conf"
     mailrise_container_user: "mailrise"
     mailrise_config_dir: "{{ storage_base_dir }}/config"
     mailrise_config_file: "{{ mailrise_config_dir }}/mailrise.conf"

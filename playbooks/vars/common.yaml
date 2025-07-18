@@ -1,5 +1,6 @@
 output_path: "{{ playbook_dir }}/../output"
 
-certificate_tools_path: "{{ output_path }}/{{ cluster_name }}"
+cluster_output_path: "{{ output_path }}/{{ cluster_name }}/{{ environment_name }}"
+certificate_tools_path: "{{ output_path }}/{{ cluster_name }}/{{ environment }}"
 
 nut_server_name: "homelab"

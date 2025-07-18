@@ -7,7 +7,7 @@
     nodeexporter_textfilecollector_dir_host: "{{ storage_base_dir }}/textfile_collector"
     nodeexporter_textfilecollector_dir_container: "/var/lib/node_exporter/textfile_collector"
     nodeexporter_textfilecollector_template: "nodeexporter/container-status-collector.sh.j2"
-    nodeexporter_textfilecollector_script_output: "{{ output_path }}/{{ cluster_name }}/configs/nodeexporter/container-status-collector.sh"
+    nodeexporter_textfilecollector_script_output: "{{ cluster_output_path }}/configs/nodeexporter/container-status-collector.sh"
     nodeexporter_textfilecollector_script: "/usr/local/bin/container-status-collector.sh"
     nodeexporter_textfilecollector_filename: "container-status.prom"
     nodeexporter_container_name: "nodeexporter"

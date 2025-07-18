@@ -9,7 +9,7 @@
     container_name: "traefik"
     subdomain_prefix: "traefik"
     docker_compose_template: "traefik/traefik-compose.yaml.j2"
-    docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/traefik-compose.yaml"
+    docker_compose_output: "{{ cluster_output_path }}/docker-compose/traefik-compose.yaml"
     ports:
       - ext: "{{ traefik_web_port }}"
         int: 80
@@ -20,9 +20,9 @@
     storage_base_dir: "/storage/traefik"
     docker_hosts_list: "{{ query('inventory_hostnames', 'docker_hosts') | difference(['vpn']) }}"
     traefik_config_template: "traefik/traefik.yaml.j2"
-    traefik_config_output: "{{ output_path }}/{{ cluster_name }}/configs/traefik/traefik.yaml"
+    traefik_config_output: "{{ cluster_output_path }}/configs/traefik/traefik.yaml"
     traefik_dynamic_template: "traefik/traefik-dynamic.yaml.j2"
-    traefik_dynamic_output: "{{ output_path }}/{{ cluster_name }}/configs/traefik"
+    traefik_dynamic_output: "{{ cluster_output_path }}/configs/traefik"
     traefik_config_dir: "{{ storage_base_dir }}/config"
     traefik_config_file: "{{ traefik_config_dir }}/traefik.yaml"
     traefik_certs_dir: "{{ storage_base_dir }}/certs"
@@ -90,8 +90,8 @@
         name: generate-bcrypt-password
       vars:
         password_plaintext: "{{ traefik_admin_password }}"
-        password_checksum_file: "{{ output_path }}/{{ cluster_name }}/configs/traefik/traefik-admin-password-hash.txt"
-        password_bcrypt_file: "{{ output_path }}/{{ cluster_name }}/configs/traefik/traefik-admin-password.txt"
+        password_checksum_file: "{{ cluster_output_path }}/configs/traefik/traefik-admin-password-hash.txt"
+        password_bcrypt_file: "{{ cluster_output_path }}/configs/traefik/traefik-admin-password.txt"
 
     - name: Store the generated bcrypt password into a specific variable
       ansible.builtin.set_fact:

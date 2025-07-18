@@ -9,13 +9,13 @@
     container_name: "{{ service_name }}"
     subdomain: "ups"
     docker_compose_template: "peanut/peanut-compose.yaml.j2"
-    docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/peanut-compose.yaml"
+    docker_compose_output: "{{ cluster_output_path }}/docker-compose/peanut-compose.yaml"
     ports:
       - ext: "{{ peanut_frontend_port }}"
         int: 8080
     storage_base_dir: "/storage/{{ service_name }}"
     peanut_config_template: "peanut/peanut-config.yaml.j2"
-    peanut_config_output: "{{ output_path }}/{{ cluster_name }}/configs/peanut/peanut-config.yaml"
+    peanut_config_output: "{{ cluster_output_path }}/configs/peanut/peanut-config.yaml"
     peanut_config_dir: "{{ storage_base_dir }}/config"
     peanut_config_file_host: "{{ peanut_config_dir }}/settings.yaml"
     volumes:

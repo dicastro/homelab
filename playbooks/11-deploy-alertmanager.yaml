@@ -9,14 +9,14 @@
     container_name: "{{ service_name }}"
     subdomain: "alerts"
     docker_compose_template: "alertmanager/alertmanager-compose.yaml.j2"
-    docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/alertmanager-compose.yaml"
+    docker_compose_output: "{{ cluster_output_path }}/docker-compose/alertmanager-compose.yaml"
     ports:
       - ext: "{{ alertmanager_frontend_port }}"
         int: 9093
     storage_base_dir: "/storage/{{ service_name }}"
 
     alertmanager_config_template: "alertmanager/alertmanager-config.yaml.j2"
-    alertmanager_config_output: "{{ output_path }}/{{ cluster_name }}/configs/alertmanager/alertmanager-config.yaml"
+    alertmanager_config_output: "{{ cluster_output_path }}/configs/alertmanager/alertmanager-config.yaml"
     alertmanager_config_dir: "{{ storage_base_dir }}/config"
     alertmanager_config_file_host: "{{ alertmanager_config_dir }}/alertmanager.yaml"
     alertmanager_config_file_container: "/etc/alertmanager/alertmanager.yaml"
@@ -25,7 +25,7 @@
     alertmanager_certs_dir_host: "{{ storage_base_dir }}/certs"
     alertmanager_certs_dir_container: "/etc/alertmanager/certs"
     alertmanager_mailrise_ca_filename: "{{ cluster_name }}_root_ca_crt.pem"
-    alertmanager_mailrise_ca_file_local: "{{ output_path }}/{{ cluster_name }}/certificates/{{ alertmanager_mailrise_ca_filename }}"
+    alertmanager_mailrise_ca_file_local: "{{ cluster_output_path }}/certificates/{{ alertmanager_mailrise_ca_filename }}"
     alertmanager_mailrise_ca_file_host: "{{ alertmanager_certs_dir_host }}/{{ alertmanager_mailrise_ca_filename }}"
     alertmanager_mailrise_ca_file_container: "{{ alertmanager_certs_dir_container }}/{{ alertmanager_mailrise_ca_filename }}"
     alertmanager_templates_dir_host: "{{ storage_base_dir }}/templates"

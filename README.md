@@ -2,7 +2,6 @@
 
 ## TODOs
 
-- change `output_path` variable to be the final value, all the usages are `{{ output_path}}/{{ cluster_name }}`. Use the new `environment` variable.
 - add to the storage path a subfolder with the environment. Define the environment as a property in the configuration (e.g. `san`)
 - buy ups battery
 - create playbook to deploy vaultwarden

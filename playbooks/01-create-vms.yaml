@@ -6,7 +6,7 @@
   gather_facts: no
   become: no
   vars:
-    vmssshkey_path: "{{ output_path }}/{{ cluster_name }}"
+    vmssshkey_path: "{{ cluster_output_path }}"
     pve_local_dir_host: "/var/lib/vz"
     pve_cloudinit_vendor_config: "snippets/ubuntu-vendor-data.yaml"
   vars_files:

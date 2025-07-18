@@ -4,7 +4,7 @@
   become: no
   vars:
     portainer_data_path: "/storage/portainer/data"
-    certs_base_path: "{{ output_path }}/{{ cluster_name }}/certificates"
+    certs_base_path: "{{ cluster_output_path }}/certificates"
   vars_files:
     - vars/common.yaml
     - "{{ inventory_dir }}/docker-images.yaml"

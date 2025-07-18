@@ -9,14 +9,14 @@
     container_name: "{{ service_name }}"
     subdomain: "metrics"
     docker_compose_template: "prometheus/prometheus-compose.yaml.j2"
-    docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/prometheus-compose.yaml"
+    docker_compose_output: "{{ cluster_output_path }}/docker-compose/prometheus-compose.yaml"
     ports:
       - ext: "{{ prometheus_frontend_port }}"
         int: 9090
     storage_base_dir: "/storage/{{ service_name }}"
     prometheus_retention: "15d"
     prometheus_config_template: "prometheus/prometheus-config.yaml.j2"
-    prometheus_config_output: "{{ output_path }}/{{ cluster_name }}/configs/prometheus/prometheus-config.yaml"
+    prometheus_config_output: "{{ cluster_output_path }}/configs/prometheus/prometheus-config.yaml"
     prometheus_config_dir: "{{ storage_base_dir }}/config"
     prometheus_targets_dir_host: "{{ prometheus_config_dir }}/file_sd"
     prometheus_targets_dir_container: "/etc/prometheus/file_sd"

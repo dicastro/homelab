@@ -10,7 +10,7 @@
     subdomain: "dns"
     frontend_port: "3000"
     docker_compose_template: "adguardhome/adguardhome-compose.yaml.j2"
-    docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/adguardhome-compose.yaml"
+    docker_compose_output: "{{ cluster_output_path }}/docker-compose/adguardhome-compose.yaml"
     ports:
       - ext: "{{ adguardhome_dns_port }}"
         int: "53/tcp"
@@ -20,7 +20,7 @@
         int: "3000/tcp"
     storage_base_dir: "/storage/adguardhome"
     adguardhome_config_template: "adguardhome/adguardhome-config.yaml.j2"
-    adguardhome_config_output: "{{ output_path }}/{{ cluster_name }}/configs/adguardhome/adguardhome-config.yaml"
+    adguardhome_config_output: "{{ cluster_output_path }}/configs/adguardhome/adguardhome-config.yaml"
     adguardhome_config_dir: "{{ storage_base_dir }}/conf"
     volumes:
       - src: "{{ storage_base_dir }}/work"
@@ -62,8 +62,8 @@
         name: generate-bcrypt-password
       vars:
         password_plaintext: "{{ adguardhome_admin_password }}"
-        password_checksum_file: "{{ output_path }}/{{ cluster_name }}/configs/adguardhome/adguardhome-admin-password-hash.txt"
-        password_bcrypt_file: "{{ output_path }}/{{ cluster_name }}/configs/adguardhome/adguardhome-admin-password.txt"
+        password_checksum_file: "{{ cluster_output_path }}/configs/adguardhome/adguardhome-admin-password-hash.txt"
+        password_bcrypt_file: "{{ cluster_output_path }}/configs/adguardhome/adguardhome-admin-password.txt"
 
     - name: Store the generated bcrypt password into a specific variable
       ansible.builtin.set_fact:

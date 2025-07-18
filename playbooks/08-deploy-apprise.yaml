@@ -9,7 +9,7 @@
     container_name: "{{ service_name }}"
     subdomain: "notifications"
     docker_compose_template: "apprise/apprise-compose.yaml.j2"
-    docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/apprise-compose.yaml"
+    docker_compose_output: "{{ cluster_output_path }}/docker-compose/apprise-compose.yaml"
     ports:
       - name: frontend
         ext: "{{ apprise_frontend_port }}"

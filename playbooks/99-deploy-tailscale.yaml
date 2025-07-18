@@ -8,7 +8,7 @@
     destination_host: "vpn"
     container_name: "{{ service_name }}"
     docker_compose_template: "tailscale/tailscale-compose.yaml.j2"
-    docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/tailscale-compose.yaml"
+    docker_compose_output: "{{ cluster_output_path }}/docker-compose/tailscale-compose.yaml"
     storage_base_dir: "/storage/{{ service_name }}"
     tailscale_api_url: "https://api.tailscale.com/api/v2"
     tailscale_storage_dir_container: "/var/lib/tailscale"

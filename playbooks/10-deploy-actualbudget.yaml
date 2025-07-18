@@ -9,7 +9,7 @@
     container_name: "{{ service_name }}"
     subdomain: "finance"
     docker_compose_template: "actualbudget/actualbudget-compose.yaml.j2"
-    docker_compose_output: "{{ output_path }}/{{ cluster_name }}/docker-compose/actualbudget-compose.yaml"
+    docker_compose_output: "{{ cluster_output_path }}/docker-compose/actualbudget-compose.yaml"
     ports:
       - name: frontend
         ext: "{{ actualbudget_frontend_port }}"
