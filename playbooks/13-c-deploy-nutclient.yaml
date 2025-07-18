@@ -65,7 +65,6 @@
         mode: "0755"
       vars:
         ups: "{{ nut_server_name }}@{{ hostvars['ups'].ansible_host }}"
-        notifications_endpoint: "http://{{ hostvars['management'].ansible_host }}:{{ apprise_frontend_port }}/notify/apprise"
         notification_shutdown_message_title: "WARNING - Proxmox Shutdown"
         notification_shutdown_message_body: "Power outage detected. Proxmox will be shut down immediately"
         battery_charge_threshold_percentage: 98

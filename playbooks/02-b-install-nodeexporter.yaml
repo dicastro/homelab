@@ -42,7 +42,6 @@
         dest: "{{ nodeexporter_textfilecollector_script_output }}"
         mode: "0755"
       vars:
-        notifications_endpoint: "http://{{ hostvars['management'].ansible_host }}:{{ apprise_frontend_port }}/notify/apprise"
         nodeexporter_container: "{{ nodeexporter_container_name }}"
         prom_file: "{{ nodeexporter_textfilecollector_dir_host }}/{{ nodeexporter_textfilecollector_filename }}"
         status_dir: "{{ nodeexporter_textfilecollector_status_dir_host }}"

@@ -25,7 +25,7 @@
 - name: Set Portainer API URLs
   set_fact:
     portainer_api_url: "http://localhost:{{ portainer_frontend_port }}/api"
-    portainer_api_url_remote: "http://{{ hostvars['management'].ansible_host }}:{{ portainer_frontend_port }}/api"
+    portainer_api_url_remote: "http://{{ hostvars[portainer_destination_host].ansible_host }}:{{ portainer_frontend_port }}/api"
 
 - name: Clearing facts
   ansible.builtin.set_fact:

@@ -1,6 +1,6 @@
 ---
 - name: Deploy portainer
-  hosts: management
+  hosts: portainer_host
   become: no
   vars:
     portainer_data_path: "/storage/portainer/data"
