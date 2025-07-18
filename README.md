@@ -2,7 +2,6 @@
 
 ## TODOs
 
-- add to the storage path a subfolder with the environment. Define the environment as a property in the configuration (e.g. `san`)
 - buy ups battery
 - create playbook to deploy vaultwarden
 - create playbook to deploy homeassistant
