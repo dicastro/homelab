@@ -2,7 +2,6 @@
 
 ## TODOs
 
-- buy ups battery
 - create playbook to deploy vaultwarden
 - create playbook to deploy homeassistant
 - migrate data from vaultwarden in homeassistant in rpi

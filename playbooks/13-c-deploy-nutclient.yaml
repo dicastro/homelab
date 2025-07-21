@@ -67,8 +67,8 @@
         ups: "{{ nut_server_name }}@{{ hostvars['ups'].ansible_host }}"
         notification_shutdown_message_title: "WARNING - Proxmox Shutdown"
         notification_shutdown_message_body: "Power outage detected. Proxmox will be shut down immediately"
-        battery_charge_threshold_percentage: 98
-        ups_poll_interval_seconds: 2
+        battery_charge_threshold_percentage: 75
+        ups_poll_interval_seconds: 10
         shutdown_command: "{{ nutclient_shutdown_script }}"
       delegate_to: localhost
       register: rendered_nutclient_notify_script_file

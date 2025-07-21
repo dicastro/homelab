@@ -13,7 +13,7 @@ services:
     environment:
       - TS_AUTHKEY=${TS_AUTHKEY}
       - TS_HOSTNAME=homelab
-      - TS_ROUTES=192.168.86.0/24
+      - TS_ROUTES={{ ip_range }}
       - TS_STATE_DIR={{ tailscale_storage_dir_container }}
     volumes:
 {% for volume in volumes %}
