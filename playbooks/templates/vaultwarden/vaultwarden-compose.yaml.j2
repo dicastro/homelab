@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  vaultwarden:
+    image: {{ vaultwarden_image }}
+    container_name: {{ container_name }}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.rule=Host(`{{ subdomain }}.{{ cluster_domain }}`)"
+      - "traefik.http.routers.prometheus.entrypoints=websecure"
+      - "traefik.http.routers.prometheus.tls.certresolver=letsencrypt"
+    restart: unless-stopped
+    environment:
+      - DOMAIN=https://{{ subdomain }}.{{ cluster_domain }}
+      - ENABLE_WEBSOCKET=true
+      - SIGNUPS_ALLOWED={{ signups_allowed | string | lower }}
+      - SIGNUPS_VERIFY={{ signups_verify | string | lower }}
+      - INVITATIONS_ALLOWED={{ invitations_allowed | string | lower }}
+      - ADMIN_TOKEN=${ADMIN_TOKEN}
+    volumes:
+{% for volume in volumes %}
+      - "{{ volume.src }}:{{ volume.dst }}"
+{% endfor %}
+    ports:
+{% for port in ports %}
+      - "{{ port.ext }}:{{ port.int }}"
+{% endfor %}
+    networks:
+      - frontend
+
+networks:
+  frontend:
+    external: true

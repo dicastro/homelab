@@ -157,7 +157,7 @@
       register: proxmox_existing_notification_targets
 
     - name: Determine if SMTP target exists
-      set_fact:
+      ansible.builtin.set_fact:
         proxmox_notification_target_exists: "{{ proxmox_notification_target_name in proxmox_existing_notification_targets.json.data | map(attribute='name') | list }}"
 
     - name: Add notification target

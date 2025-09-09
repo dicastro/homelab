@@ -35,7 +35,7 @@
         name: extract-named-ports-to-dict
 
     - name: Set AppRise base url
-      set_fact:
+      ansible.builtin.set_fact:
         apprise_base_url: "http://localhost:{{ ports_dict.frontend }}"
 
     - name: Get portainer token and endpoints map
@@ -122,7 +122,7 @@
       failed_when: false
 
     - name: Compare current vs desired apprise config
-      set_fact:
+      ansible.builtin.set_fact:
         apprise_config_needs_update: "{{ (apprise_get_response.json.config | default('')) | trim != apprise_yaml_config | trim }}"
 
     - name: Debug apprise_config_needs_update

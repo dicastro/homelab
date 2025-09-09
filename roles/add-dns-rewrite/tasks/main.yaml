@@ -24,7 +24,7 @@
   delegate_to: dns
 
 - name: Check if rewrite already exists
-  set_fact:
+  ansible.builtin.set_fact:
     rewrite_exists: "{{ adguardhome_rewrites.json | selectattr('domain', 'equalto', rewrite_domain) | list | length > 0 }}"
 
 - name: Add new rewrite rule if not exists

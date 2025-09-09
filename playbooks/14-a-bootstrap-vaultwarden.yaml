@@ -1,0 +1,108 @@
+---
+- name: Deploy VaultWarden through Portainer
+  hosts: management
+  gather_facts: false
+  become: no
+  vars:
+    service_name: "vaultwarden"
+    destination_host: "tracking"
+    container_name: "{{ service_name }}"
+    subdomain: "passwords"
+    docker_compose_template: "vaultwarden/vaultwarden-compose.yaml.j2"
+    docker_compose_output: "{{ cluster_output_path }}/docker-compose/vaultwarden-compose.yaml"
+    vaultwarden_config_output_dir: "{{ cluster_output_path }}/configs/vaultwarden"
+    ports:
+      - ext: "{{ vaultwarden_frontend_port }}"
+        int: 80
+    storage_base_dir: "/storage/{{ service_name }}"
+    vaultwarden_data_dir: "{{ storage_base_dir }}/data"
+    volumes:
+      - src: "{{ vaultwarden_data_dir }}"
+        dst: "/data"
+        type: dir
+  vars_files:
+    - vars/common.yaml
+    - "{{ inventory_dir }}/docker-images.yaml"
+    - "{{ inventory_dir }}/secrets.yaml"
+    - "{{ inventory_dir }}/docker-ports.yaml"
+
+  tasks:
+    - name: Set Vaultwarden API URL
+      ansible.builtin.set_fact:
+        vaultwarden_api_url_remote: "http://{{ hostvars[vaultwarden_destination_host].ansible_host }}:{{ vaultwarden_frontend_port }}"
+
+    - name: Get portainer token and endpoints map
+      ansible.builtin.include_role:
+        name: get-portainer-token-and-endpoints-map
+
+    - name: Ensure VaultWarden directories exist
+      ansible.builtin.include_role:
+        name: ensure-directories-exist
+      vars:
+        target_hosts: "{{ destination_host }}"
+
+    - name: Ensure the base directory for Vaultwarden output config exists
+      ansible.builtin.file:
+        path: "{{ vaultwarden_config_output_dir }}"
+        state: directory
+        mode: "0755"
+      delegate_to: "localhost"
+
+    - name: Render vaulwarden-compose.yaml from template
+      ansible.builtin.template:
+        src: "{{ docker_compose_template }}"
+        dest: "{{ docker_compose_output }}"
+        mode: "0644"
+      vars:
+        signups_allowed: true
+        signups_verify: false
+        invitations_allowed: false
+      delegate_to: localhost
+      register: rendered_compose_file
+
+    - name: Deploy VaultWarden through Portainer
+      ansible.builtin.include_role:
+        name: deploy-through-portainer
+      vars:
+        portainer_endpoint_name: "{{ destination_host }}"
+        portainer_stack_name: "{{ service_name }}"
+        portainer_stack_env: '[{\"name\": \"ADMIN_TOKEN\", \"value\": \"{{ vaultwarden_admin_token }}\"}]'
+        service_compose_file: "{{ docker_compose_output }}"
+        service_compose_file_changed: "{{ rendered_compose_file.changed }}"
+
+    - name: Wait for VaultWarden to become ready (max 60s)
+      ansible.builtin.uri:
+        url: "{{ vaultwarden_api_url_remote }}/alive"
+        method: GET
+        status_code: 200
+      register: vaultwarden_wait_check
+      until: vaultwarden_wait_check.status == 200
+      retries: 20
+      delay: 3
+      ignore_errors: true
+
+    - name: Generate Argon2 hash of the VaultWarden admin token using vaultwarden CLI
+      ansible.builtin.shell: |
+        /usr/bin/expect <<'EOD' | awk -F"'" '/ADMIN_TOKEN/ {print $2}'
+        set timeout -1
+        set token "{{ vaultwarden_admin_token }}"
+        spawn docker exec -it {{ container_name }} /vaultwarden hash
+        expect "Password:"
+        send "$token\r"
+        expect "Confirm Password:"
+        send "$token\r"
+        expect eof
+        EOD
+      args:
+        executable: /bin/bash
+      register: vaultwarden_admin_token_argon2
+      when: vaultwarden_wait_check.status is defined and vaultwarden_wait_check.status == 200
+      delegate_to: "{{ destination_host }}"
+
+    - name: Save the new Argon2 VaultWarden admin token hash to file
+      ansible.builtin.copy:
+        content: "{{ vaultwarden_admin_token_argon2.stdout }}"
+        dest: "{{ vaultwarden_config_output_dir }}/vaultwarden-admin-token-argon2.txt"
+        mode: "0600"
+      when: vaultwarden_wait_check.status is defined and vaultwarden_wait_check.status == 200
+      delegate_to: localhost

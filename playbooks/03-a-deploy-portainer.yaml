@@ -42,7 +42,7 @@
           "traefik.http.services.portainer.loadbalancer.server.port": "{{ portainer_frontend_port }}"
 
     - name: Set Portainer API URL
-      set_fact:
+      ansible.builtin.set_fact:
         portainer_api_url: "http://localhost:{{ portainer_frontend_port }}/api"
 
     - name: Wait for Portainer API to be ready

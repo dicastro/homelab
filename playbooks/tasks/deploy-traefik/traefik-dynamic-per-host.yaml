@@ -1,5 +1,5 @@
 - name: Set dynamic output path
-  set_fact:
+  ansible.builtin.set_fact:
     traefik_dynamic_output_file: "{{ traefik_dynamic_output }}/traefik-dynamic-{{ item }}.yml"
 
 - name: Render Traefik dynamic template for {{ item }}

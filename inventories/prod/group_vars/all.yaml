@@ -5,3 +5,5 @@ portainer_destination_host: "{{ groups['portainer_host'][0] }}"
 apprise_destination_host: "{{ groups['apprise_host'][0] }}"
 
 notifications_endpoint: "http://{{ hostvars[apprise_destination_host].ansible_host }}:{{ apprise_frontend_port }}/notify/apprise"
+
+vaultwarden_destination_host: "{{ groups['vaultwarden_host'][0] }}"

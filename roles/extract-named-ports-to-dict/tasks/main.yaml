@@ -11,7 +11,7 @@
 # ports_dict       (dictionary)  Dictionary containing the named ports
 #
 - name: Extract named ports to a dictionary
-  set_fact:
+  ansible.builtin.set_fact:
     ports_dict: >-
       {{
         dict(
