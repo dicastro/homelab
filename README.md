@@ -2,7 +2,6 @@
 
 ## TODOs
 
-- create playbook to deploy vaultwarden
 - create playbook to deploy homeassistant
 - migrate data from vaultwarden in homeassistant in rpi
 - migrate data from homeassistant in rpi
