@@ -81,6 +81,12 @@
       delay: 3
       ignore_errors: true
 
+    - name: Ensure expect is installed on the remote host
+      ansible.builtin.package:
+        name: expect
+        state: present
+      delegate_to: "{{ destination_host }}"
+
     - name: Generate Argon2 hash of the VaultWarden admin token using vaultwarden CLI
       ansible.builtin.shell: |
         /usr/bin/expect <<'EOD' | awk -F"'" '/ADMIN_TOKEN/ {print $2}'
@@ -106,3 +112,9 @@
         mode: "0600"
       when: vaultwarden_wait_check.status is defined and vaultwarden_wait_check.status == 200
       delegate_to: localhost
+
+    - name: PENDING MANUAL ACTIONS
+      ansible.builtin.debug:
+        msg:
+          - "1. Register yourself accessing {{ vaultwarden_api_url_remote }}/#/register"
+          - "2. Delete the 'vaultwarden' stack from portainer and run the next ansible playbook in order to have a running instance with encrypted admin token and with signups disabled"

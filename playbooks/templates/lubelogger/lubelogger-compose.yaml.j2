@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  lubelogger:
+    image: {{ lubelogger_image }}
+    container_name: {{ container_name }}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.lubelogger.rule=Host(`{{ subdomain }}.{{ cluster_domain }}`)"
+      - "traefik.http.routers.lubelogger.entrypoints=websecure"
+      - "traefik.http.routers.lubelogger.tls.certresolver=letsencrypt"
+    restart: unless-stopped
+    environment:
+      - PublicDomain=https://{{ subdomain }}.{{ cluster_domain }}
+      - EnableAuth=true
+      - UserNameHash={{ lubelogger_admin_user | hash('sha256') }}
+      - UserPasswordHash={{ lubelogger_admin_password | hash('sha256') }}
+      - LANG=es_ES.UTF-8
+      - LC_ALL=es_ES.UTF-8
+    volumes:
+{% for volume in volumes %}
+      - "{{ volume.src }}:{{ volume.dst }}"
+{% endfor %}
+    ports:
+{% for port in ports %}
+      - "{{ port.ext }}:{{ port.int }}"
+{% endfor %}
+    networks:
+      - frontend
+
+networks:
+  frontend:
+    external: true

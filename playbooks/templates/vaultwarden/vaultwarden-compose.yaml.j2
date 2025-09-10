@@ -6,9 +6,9 @@ services:
     container_name: {{ container_name }}
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.prometheus.rule=Host(`{{ subdomain }}.{{ cluster_domain }}`)"
-      - "traefik.http.routers.prometheus.entrypoints=websecure"
-      - "traefik.http.routers.prometheus.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.vaultwarden.rule=Host(`{{ subdomain }}.{{ cluster_domain }}`)"
+      - "traefik.http.routers.vaultwarden.entrypoints=websecure"
+      - "traefik.http.routers.vaultwarden.tls.certresolver=letsencrypt"
     restart: unless-stopped
     environment:
       - DOMAIN=https://{{ subdomain }}.{{ cluster_domain }}

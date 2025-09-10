@@ -2,13 +2,12 @@
 
 ## TODOs
 
-- create playbook to deploy homeassistant
-- migrate data from vaultwarden in homeassistant in rpi
-- migrate data from homeassistant in rpi
-- create playbook to deploy service to track car expenses
 - create playbook to deploy service to track recipes
 - create playbook to deploy owncloud
 - create playbook to deploy immitch
+- create playbook to deploy homeassistant
+- migrate data from vaultwarden in homeassistant in rpi
+- migrate data from homeassistant in rpi
 - check pve bios to see if _Restore on AC Power Loss_ (or similar) is enabled
 - create playbook to deploy diun
 - create playbook deploy loki

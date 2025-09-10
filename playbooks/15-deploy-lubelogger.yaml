@@ -1,0 +1,86 @@
+---
+- name: Deploy LubeLogger to Portainer
+  hosts: management
+  gather_facts: false
+  become: no
+  vars:
+    service_name: "lubelogger"
+    destination_host: "tracking"
+    container_name: "{{ service_name }}"
+    subdomain: "vehicles"
+    docker_compose_template: "lubelogger/lubelogger-compose.yaml.j2"
+    docker_compose_output: "{{ cluster_output_path }}/docker-compose/lubelogger-compose.yaml"
+    ports:
+      - name: frontend
+        ext: "{{ lubelogger_frontend_port }}"
+        int: 8080
+    storage_base_dir: "/storage/{{ service_name }}"
+    lubelogger_data_dir: "{{ storage_base_dir }}/data"
+    volumes:
+      - src: "{{ lubelogger_data_dir }}"
+        dst: "/data"
+        type: dir
+  vars_files:
+    - vars/common.yaml
+    - "{{ inventory_dir }}/docker-images.yaml"
+    - "{{ inventory_dir }}/secrets.yaml"
+    - "{{ inventory_dir }}/docker-ports.yaml"
+
+  tasks:
+    - name: Extract LugeLogger named ports
+      ansible.builtin.include_role:
+        name: extract-named-ports-to-dict
+
+    - name: Get portainer token and endpoints map
+      ansible.builtin.include_role:
+        name: get-portainer-token-and-endpoints-map
+
+    - name: Ensure LubeLogger directories exist
+      ansible.builtin.include_role:
+        name: ensure-directories-exist
+      vars:
+        target_hosts: "{{ destination_host }}"
+
+    - name: Generate lubelogger-compose.yaml from template
+      ansible.builtin.template:
+        src: "{{ docker_compose_template }}"
+        dest: "{{ docker_compose_output }}"
+        mode: "0644"
+      delegate_to: "localhost"
+      register: rendered_compose_file
+
+    - name: Deploy LubeLogger through Portainer
+      ansible.builtin.include_role:
+        name: deploy-through-portainer
+      vars:
+        portainer_endpoint_name: "{{ destination_host }}"
+        portainer_stack_name: "{{ service_name }}"
+        service_compose_file: "{{ docker_compose_output }}"
+        service_compose_file_changed: "{{ rendered_compose_file.changed }}"
+
+    - name: Add DNS rewrite for LubeLogger
+      ansible.builtin.include_role:
+        name: add-dns-rewrite
+      vars:
+        rewrite_domain: "{{ subdomain }}.{{ cluster_domain }}"
+        rewrite_answer: "{{ hostvars[destination_host].ansible_host }}"
+
+    - name: Add LubeLogger to Homer Dashboard
+      ansible.builtin.include_role:
+        name: add-to-homer
+      vars:
+        homer_service_name: "Services"
+        homer_item:
+          name: "Vehicles"
+          subtitle: "LubeLogger"
+          url: "https://{{ subdomain }}.{{ cluster_domain }}"
+          target: "_blank"
+          logo: "logo-lubelogger.png"
+
+    - name: PENDING MANUAL ACTIONS
+      ansible.builtin.debug:
+        msg:
+          - "1. Login as 'root' at https://{{ subdomain }}.{{ cluster_domain }}/Login"
+          - "2. Create a token for yourself from 'Admin Panel'"
+          - "3. Register yourself with the created token at https://{{ subdomain }}.{{ cluster_domain }}/Login/Registration"
+          - "4. Use the 'non-root' user to manage vehicles"
