@@ -16,7 +16,7 @@
   tasks:
     - name: Ensure snippets directory exists
       ansible.builtin.file:
-        path: "{{ pve_snippets_dir_host }}"
+        path: "{{ pve_local_dir_host }}"
         state: directory
         mode: "0755"
       delegate_to: pve
@@ -52,11 +52,13 @@
           {% if vm.usb_product is defined %}
           --usb-product "{{ vm.usb_product }}"
           {% endif %}
-          --start-on-boot {{ vm.start_on_boot }}
+          {% if vm.start_on_boot is defined and vm.start_on_boot %}
+          --start-on-boot
+          {% endif %}
           {% if vm.startup_delay_seconds is defined %}
           --startup-delay-seconds "{{ vm.startup_delay_seconds }}"
           {% endif %}
-          --cloud-init-vendor-config "vendor=local:{{ pve_cloudinit_vendor_config }}"
+          --cloud-init-vendor-config "local:{{ pve_cloudinit_vendor_config }}"
           --proxmox-host {{ proxmox_host }}
           --proxmox-user {{ proxmox_user }}
           --output-format ansible

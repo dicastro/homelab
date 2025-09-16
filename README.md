@@ -82,12 +82,12 @@ e.g.
 > source .venv/bin/activate
 ```
 
-### Install Ansible
+### Install Ansible (and required dependencies)
 
 > With the python virtual environment activated
 
 ```
-(.venv) > pip install ansible
+(.venv) > pip install -r requirements.txt
 ```
 
 ## How to deactivate an active python virtual environment

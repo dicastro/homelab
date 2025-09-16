@@ -17,7 +17,7 @@
     peanut_config_template: "peanut/peanut-config.yaml.j2"
     peanut_config_output: "{{ cluster_output_path }}/configs/peanut/peanut-config.yaml"
     peanut_config_dir: "{{ storage_base_dir }}/config"
-    peanut_config_file_host: "{{ peanut_config_dir }}/settings.yaml"
+    peanut_config_file_host: "{{ peanut_config_dir }}/settings.yml"
     volumes:
       - src: "{{ peanut_config_dir }}"
         dst: "/config"
