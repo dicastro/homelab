@@ -2,7 +2,6 @@
 
 ## TODOs
 
-- create playbook to deploy service to track recipes
 - create playbook to deploy owncloud
 - create playbook to deploy immitch
 - create playbook to deploy homeassistant

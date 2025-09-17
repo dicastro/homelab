@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  tandoorrecipes:
+    image: {{ tandoorrecipes_image }}
+    container_name: {{ container_name }}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.tandoorrecipes.rule=Host(`{{ subdomain }}.{{ cluster_domain }}`)"
+      - "traefik.http.routers.tandoorrecipes.entrypoints=websecure"
+      - "traefik.http.routers.tandoorrecipes.tls.certresolver=letsencrypt"
+    restart: unless-stopped
+    environment:
+      - SECRET_KEY={{ tandoorrecipes_secret }}
+      - ALLOWED_HOSTS={{ subdomain }}.{{ cluster_domain }}
+      - DB_ENGINE=django.db.backends.sqlite3
+      - ENABLE_SIGNUP={{ signups_allowed | int }}
+      - TZ=Europe/Madrid
+    volumes:
+{% for volume in volumes %}
+      - "{{ volume.src }}:{{ volume.dst }}"
+{% endfor %}
+    ports:
+{% for port in ports %}
+      - "{{ port.ext }}:{{ port.int }}"
+{% endfor %}
+    networks:
+      - frontend
+
+networks:
+  frontend:
+    external: true
