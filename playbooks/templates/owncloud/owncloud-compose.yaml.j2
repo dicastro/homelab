@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  owncloud:
+    image: {{ owncloud_image }}
+    container_name: {{ container_name }}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.owncloud.rule=Host(`{{ subdomain }}.{{ cluster_domain }}`)"
+      - "traefik.http.routers.owncloud.entrypoints=websecure"
+      - "traefik.http.routers.owncloud.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.owncloud.middlewares=owncloud-headers@docker"
+      - "traefik.http.middlewares.owncloud-headers.headers.stsSeconds=15552000"
+      - "traefik.http.middlewares.owncloud-headers.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.owncloud-headers.headers.stsPreload=true"
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - OWNCLOUD_DOMAIN={{ subdomain }}.{{ cluster_domain }}
+      - OWNCLOUD_TRUSTED_DOMAINS={{ subdomain }}.{{ cluster_domain }}
+      - OWNCLOUD_DB_TYPE=mysql
+      - OWNCLOUD_DB_NAME=owncloud
+      - OWNCLOUD_DB_USERNAME={{ owncloud_mariadb_owncloud_user }}
+      - OWNCLOUD_DB_PASSWORD={{ owncloud_mariadb_owncloud_password }}
+      - OWNCLOUD_DB_HOST=mariadb
+      - OWNCLOUD_ADMIN_USERNAME=${ADMIN_USER}
+      - OWNCLOUD_ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - OWNCLOUD_MYSQL_UTF8MB4=true
+      - OWNCLOUD_REDIS_ENABLED=true
+      - OWNCLOUD_REDIS_HOST=redis
+      - OWNCLOUD_MAIL_SMTP_MODE=smtp
+      - OWNCLOUD_MAIL_SMTP_HOST={{ mail_destination_ip }}
+      - OWNCLOUD_MAIL_SMTP_PORT={{ mail_port }}
+      - OWNCLOUD_MAIL_FROM_ADDRESS=no-reply
+      - OWNCLOUD_MAIL_DOMAIN={{ cluster_domain }}
+    healthcheck:
+      test: ["CMD", "/usr/bin/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    volumes:
+{% for volume in volumes if volume.service == 'owncloud' %}
+      - "{{ volume.src }}:{{ volume.dst }}"
+{% endfor %}
+    ports:
+{% for port in ports %}
+      - "{{ port.ext }}:{{ port.int }}"
+{% endfor %}
+    networks:
+      - frontend
+      - backend
+  mariadb:
+    image: {{ owncloud_mariadb_image }}
+    container_name: {{ container_name }}-mariadb
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD={{ owncloud_mariadb_root_password }}
+      - MYSQL_USER={{ owncloud_mariadb_owncloud_user }}
+      - MYSQL_PASSWORD={{ owncloud_mariadb_owncloud_password }}
+      - MYSQL_DATABASE=owncloud
+      - MARIADB_AUTO_UPGRADE=0
+    command: ["--max-allowed-packet=128M", "--innodb-log-file-size=64M"]
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-u", "root", "--password={{ owncloud_mariadb_root_password }}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+{% for volume in volumes if volume.service == 'mariadb' %}
+      - "{{ volume.src }}:{{ volume.dst }}"
+{% endfor %}
+    networks:
+      - backend
+  redis:
+    image: {{ owncloud_redis_image }}
+    container_name: {{ container_name }}-redis
+    restart: unless-stopped
+    command: ["--databases", "1"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+{% for volume in volumes if volume.service == 'redis' %}
+      - "{{ volume.src }}:{{ volume.dst }}"
+{% endfor %}
+    networks:
+      - backend
+
+networks:
+  frontend:
+    external: true
+  backend:
+    driver: bridge

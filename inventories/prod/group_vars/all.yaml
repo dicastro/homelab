@@ -7,3 +7,7 @@ apprise_destination_host: "{{ groups['apprise_host'][0] }}"
 notifications_endpoint: "http://{{ hostvars[apprise_destination_host].ansible_host }}:{{ apprise_frontend_port }}/notify/apprise"
 
 vaultwarden_destination_host: "{{ groups['vaultwarden_host'][0] }}"
+
+mail_destination_host: "{{ groups['mail_host'][0] }}"
+mail_destination_ip: "{{ hostvars[mail_destination_host].ansible_host }}"
+mail_port: "{{ mailpit_mail_port }}"

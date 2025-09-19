@@ -1,0 +1,90 @@
+---
+- name: Deploy MailPit to Portainer
+  hosts: management
+  gather_facts: false
+  become: no
+  vars:
+    service_name: "mailpit"
+    destination_host: "management"
+    container_name: "{{ service_name }}"
+    subdomain: "mail"
+    docker_compose_template: "mailpit/mailpit-compose.yaml.j2"
+    docker_compose_output: "{{ cluster_output_path }}/docker-compose/mailpit-compose.yaml"
+    ports:
+      - name: frontend
+        ext: "{{ mailpit_frontend_port }}"
+        int: "{{ mailpit_frontend_port }}"
+      - name: mail
+        ext: "{{ mailpit_mail_port }}"
+        int: 1025
+    storage_base_dir: "/storage/{{ service_name }}"
+    mailpit_data_dir: "{{ storage_base_dir }}/data"
+    mailpit_auth_filename: "auth"
+    volumes:
+      - src: "{{ mailpit_data_dir }}"
+        dst: "/data"
+        type: dir
+  vars_files:
+    - vars/common.yaml
+    - "{{ inventory_dir }}/docker-images.yaml"
+    - "{{ inventory_dir }}/secrets.yaml"
+    - "{{ inventory_dir }}/docker-ports.yaml"
+
+  tasks:
+    - name: Extract MailPit named ports
+      ansible.builtin.include_role:
+        name: extract-named-ports-to-dict
+
+    - name: Get portainer token and endpoints map
+      ansible.builtin.include_role:
+        name: get-portainer-token-and-endpoints-map
+
+    - name: Ensure MailPit directories exist
+      ansible.builtin.include_role:
+        name: ensure-directories-exist
+      vars:
+        target_hosts: "{{ destination_host }}"
+
+    - name: Generate mailpit-compose.yaml from template
+      ansible.builtin.template:
+        src: "{{ docker_compose_template }}"
+        dest: "{{ docker_compose_output }}"
+        mode: "0644"
+      delegate_to: "localhost"
+      register: rendered_compose_file
+
+    - name: Ensure Mailpit admin credentials file exists
+      ansible.builtin.copy:
+        dest: "{{ mailpit_data_dir }}/{{ mailpit_auth_filename }}"
+        content: "{{ mailpit_admin_user }}:{{ mailpit_admin_password }}"
+        owner: root
+        group: root
+        mode: "0600"
+
+    - name: Deploy MailPit through Portainer
+      ansible.builtin.include_role:
+        name: deploy-through-portainer
+      vars:
+        portainer_endpoint_name: "{{ destination_host }}"
+        portainer_stack_name: "{{ service_name }}"
+        service_compose_file: "{{ docker_compose_output }}"
+        service_compose_file_changed: "{{ rendered_compose_file.changed }}"
+
+    - name: Add DNS rewrite for MailPit
+      ansible.builtin.include_role:
+        name: add-dns-rewrite
+      vars:
+        rewrite_domain: "{{ subdomain }}.{{ cluster_domain }}"
+        rewrite_answer: "{{ hostvars[destination_host].ansible_host }}"
+
+    - name: Add MailPit to Homer Dashboard
+      ansible.builtin.include_role:
+        name: add-to-homer
+      vars:
+        homer_service_name: "Services"
+        homer_item:
+          name: "Mail"
+          subtitle: "MailPit"
+          url: "https://{{ subdomain }}.{{ cluster_domain }}"
+          target: "_blank"
+          logo: "logo-mailpit.png"

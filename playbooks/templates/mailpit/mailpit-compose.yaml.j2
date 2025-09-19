@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  mailpit:
+    image: {{ mailpit_image }}
+    container_name: {{ container_name }}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mailpit.rule=Host(`{{ subdomain }}.{{ cluster_domain }}`)"
+      - "traefik.http.routers.mailpit.entrypoints=websecure"
+      - "traefik.http.routers.mailpit.tls.certresolver=letsencrypt"
+      - "traefik.http.services.mailpit.loadbalancer.server.port={{ mailpit_frontend_port }}"
+    restart: unless-stopped
+    environment:
+      - MP_DATABASE=/data/mailpit.db
+      - MP_UI_BIND_ADDR=0.0.0.0:{{ mailpit_frontend_port }}
+      - MP_UI_AUTH_FILE=/data/{{ mailpit_auth_filename }}
+      - TZ=Europe/Madrid
+    volumes:
+{% for volume in volumes %}
+      - "{{ volume.src }}:{{ volume.dst }}"
+{% endfor %}
+    ports:
+{% for port in ports %}
+      - "{{ port.ext }}:{{ port.int }}"
+{% endfor %}
+    networks:
+      - frontend
+
+networks:
+  frontend:
+    external: true

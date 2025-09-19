@@ -2,7 +2,7 @@
 
 ## TODOs
 
-- create playbook to deploy owncloud
+- redeploy vaultwarden, lubelogger and tandoorrecipes configuring mailpit as email server 
 - create playbook to deploy immitch
 - create playbook to deploy homeassistant
 - migrate data from vaultwarden in homeassistant in rpi
