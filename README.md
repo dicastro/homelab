@@ -2,20 +2,21 @@
 
 ## TODOs
 
-- redeploy vaultwarden, lubelogger and tandoorrecipes configuring mailpit as email server 
+- create VM for homeassistant (domotic)
 - create playbook to deploy immitch
 - create playbook to deploy homeassistant
+- install proxmox backup server in laptop hp envy 17
+- create playbook to configure backups for VMs
+- create a specific telegram chatbot in order to receive notifications
+- update configuration of mailrise in order to use the correct telegram chatbot
 - migrate data from vaultwarden in homeassistant in rpi
 - migrate data from homeassistant in rpi
+- create a script to bootstrap new cluster (generating inventory.yaml, secrets.yaml, docker-ports.yaml, docker-images.yaml)
 - check pve bios to see if _Restore on AC Power Loss_ (or similar) is enabled
 - create playbook to deploy diun
 - create playbook deploy loki
 - create playbook to deploy promtail
 - create playbook to deploy grafana
-- install proxmox backup server in laptop hp envy 17
-- create playbook to configure backups for VMs
-- create a specific telegram chatbot in order to receive notifications
-- update configuration of mailrise in order to use the correct telegram chatbot
 - adapt backup folders/files in `download.sh` once the project structure is definitive
 - review in detail playbook 10-a-deploy-prometheus.yaml as it is not idempotent, sometimes prometheus-config.yaml is interpreted as directory
 

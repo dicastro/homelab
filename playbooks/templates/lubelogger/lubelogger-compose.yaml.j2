@@ -13,10 +13,16 @@ services:
     environment:
       - PublicDomain=https://{{ subdomain }}.{{ cluster_domain }}
       - EnableAuth=true
+      - DefaultReminderEmail={{ lubelogger_admin_user }}@{{ cluster_domain }}
       - UserNameHash={{ lubelogger_admin_user | hash('sha256') }}
       - UserPasswordHash={{ lubelogger_admin_password | hash('sha256') }}
       - LANG=es_ES.UTF-8
       - LC_ALL=es_ES.UTF-8
+      - MailConfig__EmailServer={{ mail_destination_ip }}
+      - MailConfig__Port={{ mail_smtp_port }}
+      - MailConfig__EmailFrom=no-reply@{{ cluster_domain }}
+      - MailConfig__Username={{ mail_smtp_admin_user }}
+      - MailConfig__Password={{ mail_smtp_admin_password }}
     volumes:
 {% for volume in volumes %}
       - "{{ volume.src }}:{{ volume.dst }}"

@@ -64,9 +64,9 @@
         dest: "{{ docker_compose_output }}"
         mode: "0644"
       vars:
-        signups_allowed: false
+        signups_allowed: true
         signups_verify: true
-        invitations_allowed: false
+        invitations_allowed: true
       delegate_to: localhost
       register: rendered_compose_file
 
@@ -98,3 +98,9 @@
           url: "https://{{ subdomain }}.{{ cluster_domain }}"
           target: "_blank"
           logo: "logo-vaultwarden.svg"
+
+    - name: PENDING MANUAL ACTIONS
+      ansible.builtin.debug:
+        msg:
+          - "1. Register yourself https://{{ subdomain }}.{{ cluster_domain }}/#/signup"
+          - "2. Use the 'non-root' user to store your passwords"

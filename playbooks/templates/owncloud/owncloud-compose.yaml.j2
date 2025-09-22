@@ -34,7 +34,11 @@ services:
       - OWNCLOUD_REDIS_HOST=redis
       - OWNCLOUD_MAIL_SMTP_MODE=smtp
       - OWNCLOUD_MAIL_SMTP_HOST={{ mail_destination_ip }}
-      - OWNCLOUD_MAIL_SMTP_PORT={{ mail_port }}
+      - OWNCLOUD_MAIL_SMTP_PORT={{ mail_smtp_port }}
+      - OWNCLOUD_MAIL_SMTP_SECURE= # empty if no TLS, "tls" mail server is STARTTLS
+      - OWNCLOUD_MAIL_SMTP_AUTH=true
+      - OWNCLOUD_MAIL_SMTP_NAME={{ mail_smtp_admin_user }}
+      - OWNCLOUD_MAIL_SMTP_PASSWORD={{ mail_smtp_admin_password }}
       - OWNCLOUD_MAIL_FROM_ADDRESS=no-reply
       - OWNCLOUD_MAIL_DOMAIN={{ cluster_domain }}
     healthcheck:

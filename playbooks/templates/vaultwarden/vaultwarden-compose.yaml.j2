@@ -17,6 +17,13 @@ services:
       - SIGNUPS_VERIFY={{ signups_verify | string | lower }}
       - INVITATIONS_ALLOWED={{ invitations_allowed | string | lower }}
       - ADMIN_TOKEN=${ADMIN_TOKEN}
+      - SMTP_HOST={{ mail_destination_ip }}
+      - SMTP_PORT={{ mail_smtp_port }}
+      - SMTP_SECURITY=off
+      - SMTP_USERNAME={{ mail_smtp_admin_user }}
+      - SMTP_PASSWORD={{ mail_smtp_admin_password }}
+      - SMTP_FROM=no-reply@{{ cluster_domain }}
+      - SMTP_FROM_NAME=Vaultwarden
     volumes:
 {% for volume in volumes %}
       - "{{ volume.src }}:{{ volume.dst }}"

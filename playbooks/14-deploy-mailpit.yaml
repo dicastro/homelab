@@ -11,15 +11,17 @@
     docker_compose_template: "mailpit/mailpit-compose.yaml.j2"
     docker_compose_output: "{{ cluster_output_path }}/docker-compose/mailpit-compose.yaml"
     ports:
-      - name: frontend
-        ext: "{{ mailpit_frontend_port }}"
+      - ext: "{{ mailpit_frontend_port }}"
         int: "{{ mailpit_frontend_port }}"
-      - name: mail
-        ext: "{{ mailpit_mail_port }}"
+      - ext: "{{ mailpit_smtp_port }}"
         int: 1025
+      - ext: "{{ mailpit_pop3_port }}"
+        int: 1110
     storage_base_dir: "/storage/{{ service_name }}"
     mailpit_data_dir: "{{ storage_base_dir }}/data"
-    mailpit_auth_filename: "auth"
+    mailpit_ui_auth_filename: "ui-auth"
+    mailpit_smtp_auth_filename: "smtp-auth"
+    mailpit_pop3_auth_filename: "pop3-auth"
     volumes:
       - src: "{{ mailpit_data_dir }}"
         dst: "/data"
@@ -53,10 +55,26 @@
       delegate_to: "localhost"
       register: rendered_compose_file
 
-    - name: Ensure Mailpit admin credentials file exists
+    - name: Ensure Mailpit ui admin credentials file exists
       ansible.builtin.copy:
-        dest: "{{ mailpit_data_dir }}/{{ mailpit_auth_filename }}"
-        content: "{{ mailpit_admin_user }}:{{ mailpit_admin_password }}"
+        dest: "{{ mailpit_data_dir }}/{{ mailpit_ui_auth_filename }}"
+        content: "{{ mailpit_ui_admin_user }}:{{ mailpit_ui_admin_password }}"
+        owner: root
+        group: root
+        mode: "0600"
+
+    - name: Ensure Mailpit smtp admin credentials file exists
+      ansible.builtin.copy:
+        dest: "{{ mailpit_data_dir }}/{{ mailpit_smtp_auth_filename }}"
+        content: "{{ mailpit_smtp_admin_user }}:{{ mailpit_smtp_admin_password }}"
+        owner: root
+        group: root
+        mode: "0600"
+
+    - name: Ensure Mailpit pop3 admin credentials file exists
+      ansible.builtin.copy:
+        dest: "{{ mailpit_data_dir }}/{{ mailpit_pop3_auth_filename }}"
+        content: "{{ mailpit_pop3_admin_user }}:{{ mailpit_pop3_admin_password }}"
         owner: root
         group: root
         mode: "0600"

@@ -16,6 +16,12 @@ services:
       - DB_ENGINE=django.db.backends.sqlite3
       - ENABLE_SIGNUP={{ signups_allowed | int }}
       - TZ=Europe/Madrid
+      - EMAIL_HOST={{ mail_destination_ip }}
+      - EMAIL_PORT={{ mail_smtp_port }}
+      - EMAIL_HOST_USER={{ mail_smtp_admin_user }}
+      - EMAIL_HOST_PASSWORD={{ mail_smtp_admin_password }}
+      - EMAIL_USE_TLS=0
+      - DEFAULT_FROM_EMAIL=no-reply@{{ cluster_domain }}
     volumes:
 {% for volume in volumes %}
       - "{{ volume.src }}:{{ volume.dst }}"

@@ -86,3 +86,11 @@
           url: "https://{{ subdomain }}.{{ cluster_domain }}"
           target: "_blank"
           logo: "logo-owncloud.svg"
+
+    - name: PENDING MANUAL ACTIONS
+      ansible.builtin.debug:
+        msg:
+          - "1. Login as 'root' at https://{{ subdomain }}.{{ cluster_domain }}/login"
+          - "2. Go to 'Users' and create a new user for yourself"
+          - "3. Access the link in the signup email to set the password"
+          - "4. Use the 'non-superuser' user to manage stored files"

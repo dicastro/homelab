@@ -14,7 +14,10 @@ services:
     environment:
       - MP_DATABASE=/data/mailpit.db
       - MP_UI_BIND_ADDR=0.0.0.0:{{ mailpit_frontend_port }}
-      - MP_UI_AUTH_FILE=/data/{{ mailpit_auth_filename }}
+      - MP_UI_AUTH_FILE=/data/{{ mailpit_ui_auth_filename }}
+      - MP_SMTP_AUTH_FILE=/data/{{ mailpit_smtp_auth_filename }}
+      - MP_SMTP_AUTH_ALLOW_INSECURE=1
+      - MP_POP3_AUTH_FILE=/data/{{ mailpit_pop3_auth_filename }}
       - TZ=Europe/Madrid
     volumes:
 {% for volume in volumes %}

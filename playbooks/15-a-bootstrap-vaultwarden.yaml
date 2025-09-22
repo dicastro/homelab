@@ -29,8 +29,7 @@
   tasks:
     - name: Set Vaultwarden API URL
       ansible.builtin.set_fact:
-        vaultwarden_ip: "{{ hostvars[vaultwarden_destination_host].ansible_host }}"
-        vaultwarden_api_url_remote: "http://{{ vaultwarden_ip }}:{{ vaultwarden_frontend_port }}"
+        vaultwarden_api_url_remote: "http://{{ hostvars[vaultwarden_destination_host].ansible_host }}:{{ vaultwarden_frontend_port }}"
 
     - name: Get portainer token and endpoints map
       ansible.builtin.include_role:
@@ -56,8 +55,8 @@
         mode: "0644"
       vars:
         signups_allowed: true
-        signups_verify: false
-        invitations_allowed: false
+        signups_verify: true
+        invitations_allowed: true
       delegate_to: localhost
       register: rendered_compose_file
 
@@ -117,6 +116,4 @@
     - name: PENDING MANUAL ACTIONS
       ansible.builtin.debug:
         msg:
-          - "1. Add '{{vaultwarden_ip}} {{ subdomain }}.{{ cluster_domain }}' to '/etc/hosts'"
-          - "2. Register yourself accessing https://{{ subdomain }}.{{ cluster_domain }}/#/register"
-          - "3. Delete the 'vaultwarden' stack from portainer and run the next ansible playbook in order to have a running instance with encrypted admin token and with signups disabled"
+          - "1. Delete the 'vaultwarden' stack from portainer and run the next ansible playbook in order to have a running instance with encrypted admin token"
