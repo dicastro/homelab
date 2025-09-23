@@ -2,16 +2,21 @@
 
 ## TODOs
 
-- create VM for homeassistant (domotic)
-- create playbook to deploy immitch
-- create playbook to deploy homeassistant
+- create a playbook to bootstrap a rpi with ubuntu server with cloud-init (including: user, ssh, network, apps to install)
+- create a playbook to configure ser2tcp on the desired rpi to expose any usb over tcp (e.g. the z-wave stick)
+- start the new rpi, plugin the z-wave stick, change the home-assistant to point to that z-wave stick over tcp
+- create playbook to deploy homeassistant OS on a VM
 - install proxmox backup server in laptop hp envy 17
 - create playbook to configure backups for VMs
 - create a specific telegram chatbot in order to receive notifications
 - update configuration of mailrise in order to use the correct telegram chatbot
 - migrate data from vaultwarden in homeassistant in rpi
+- cleanup the existing documents in NAS
+- upload (partially) documents in current NAS to owncloud to be able to test backups
 - migrate data from homeassistant in rpi
-- create a script to bootstrap new cluster (generating inventory.yaml, secrets.yaml, docker-ports.yaml, docker-images.yaml)
+- upload (partially) photo library to immich to be able to test backups
+- test proxmox backups
+- create a script to bootstrap new cluster configuration (generating inventory.yaml, secrets.yaml, docker-ports.yaml, docker-images.yaml)
 - check pve bios to see if _Restore on AC Power Loss_ (or similar) is enabled
 - create playbook to deploy diun
 - create playbook deploy loki
@@ -327,3 +332,23 @@ The configured script that is executed when there is an UPS event is run with `n
 > It is important to remark that in order to work, the C program has to be owned by `root:root` and the file mode has to be `4755`.
 
 The C program is not using `/sbin/shutdonw` because it won't work if for example there is any active ssh session. However, using `/bin/systemctl poweroff -i` will do the work independently of the active ssh sessions.
+
+## How to add a new VM
+
+Add the specific VM configuration to `inventory.yaml` file
+
+> Include the VM in the corresponding groups (`vms`, `docker_hosts`)
+
+Run the following playbooks
+
+```
+ansible-playbook -i inventories/prod/inventory.yaml playbooks/01-create-vms.yaml
+ansible-playbook -i inventories/prod/inventory.yaml playbooks/02-a-install-docker.yaml
+ansible-playbook -i inventories/prod/inventory.yaml playbooks/02-b-install-nodeexporter.yaml
+ansible-playbook -i inventories/prod/inventory.yaml playbooks/03-b-create-endpoints.yaml
+ansible-playbook -i inventories/prod/inventory.yaml playbooks/09-deploy-traefik.yaml
+ansible-playbook -i inventories/prod/inventory.yaml playbooks/12-b-update-prometheus-targets.yaml
+ansible-playbook -i inventories/prod/inventory.yaml playbooks/12-c-update-prometheus-alerts.yaml
+```
+
+> In Mac update `/etc/hosts` adding the new VM ip and the traefik DNS for it

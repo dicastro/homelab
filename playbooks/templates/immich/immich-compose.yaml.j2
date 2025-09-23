@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  immich:
+    image: {{ immich_image }}
+    container_name: {{ container_name }}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.immich.rule=Host(`{{ subdomain }}.{{ cluster_domain }}`)"
+      - "traefik.http.routers.immich.entrypoints=websecure"
+      - "traefik.http.routers.immich.tls.certresolver=letsencrypt"
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - TZ=Europe/Madrid
+      - DB_HOSTNAME=postgres
+      - DB_PORT=5432
+      - DB_USERNAME={{ immich_postgres_immich_user }}
+      - DB_PASSWORD={{ immich_postgres_immich_password }}
+      - DB_DATABASE_NAME=immich
+      - REDIS_HOSTNAME=redis
+      - IMMICH_CONFIG_FILE={{ immich_config_file_container }}
+    healthcheck:
+      disable: false
+    volumes:
+{% for volume in volumes if volume.service == 'immich' %}
+      - "{{ volume.src }}:{{ volume.dst }}"
+{% endfor %}
+    ports:
+{% for port in ports %}
+      - "{{ port.ext }}:{{ port.int }}"
+{% endfor %}
+    networks:
+      - frontend
+      - backend
+  immich-machine-learning:
+    container_name: {{ container_name }}-machine-learning
+    # For hardware acceleration, add one of -[armnn, cuda, rocm, openvino, rknn] to the image tag.
+    image: {{ immich_machine_learning_image }}
+    # extends: # uncomment this section for hardware acceleration - see https://immich.app/docs/features/ml-hardware-acceleration
+    #   file: hwaccel.ml.yml
+    #   service: cpu # set to one of [armnn, cuda, rocm, openvino, openvino-wsl, rknn] for accelerated inference - use the `-wsl` version for WSL2 where applicable
+    volumes:
+{% for volume in volumes if volume.service == 'immich-ml' %}
+      - "{{ volume.src }}:{{ volume.dst }}"
+{% endfor %}
+    restart: unless-stopped
+    healthcheck:
+      disable: false
+  postgres:
+    image: {{ immich_postgres_image }}
+    container_name: {{ container_name }}-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER={{ immich_postgres_immich_user }}
+      - POSTGRES_PASSWORD={{ immich_postgres_immich_password }}
+      - POSTGRES_DB=immich
+      - POSTGRES_INITDB_ARGS='--data-checksums'
+      # Uncomment the DB_STORAGE_TYPE: 'HDD' var if your database isn't stored on SSDs
+      #- DB_STORAGE_TYPE='HDD'
+    shm_size: 128mb
+    volumes:
+{% for volume in volumes if volume.service == 'postgres' %}
+      - "{{ volume.src }}:{{ volume.dst }}"
+{% endfor %}
+    networks:
+      - backend
+  redis:
+    image: {{ immich_redis_image }}
+    container_name: {{ container_name }}-redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+{% for volume in volumes if volume.service == 'redis' %}
+      - "{{ volume.src }}:{{ volume.dst }}"
+{% endfor %}
+    networks:
+      - backend
+
+networks:
+  frontend:
+    external: true
+  backend:
+    driver: bridge

@@ -1,0 +1,132 @@
+---
+- name: Deploy Immich to Portainer
+  hosts: management
+  gather_facts: false
+  become: no
+  vars:
+    service_name: "immich"
+    destination_host: "media"
+    container_name: "{{ service_name }}"
+    subdomain: "media"
+    docker_compose_template: "immich/immich-compose.yaml.j2"
+    docker_compose_output: "{{ cluster_output_path }}/docker-compose/immich-compose.yaml"
+    ports:
+      - name: frontend
+        ext: "{{ immich_frontend_port }}"
+        int: 2283
+    storage_base_dir: "/storage/{{ service_name }}"
+    immich_data_dir: "{{ storage_base_dir }}/data"
+    immich_config_template: "immich/immich-config.json.j2"
+    immich_config_output: "{{ cluster_output_path }}/configs/immich/immich-config.json"
+    immich_config_dir_host: "{{ storage_base_dir }}/config"
+    immich_config_file_host: "{{ immich_config_dir_host }}/immich-config.json"
+    immich_config_dir_container: "/config"
+    immich_config_file_container: "{{ immich_config_dir_container }}/immich-config.json"
+    volumes:
+      - service: immich
+        src: "{{ immich_data_dir }}/immich"
+        dst: "/data"
+        type: dir
+      - service: immich
+        src: "{{ immich_config_dir_host }}"
+        dst: "{{ immich_config_dir_container }}"
+        type: dir
+      - service: immich-ml
+        src: "{{ immich_data_dir }}/immich-ml"
+        dst: "/cache"
+        type: dir
+      - service: postgres
+        src: "{{ immich_data_dir }}/postgres"
+        dst: "/var/lib/postgresql/data"
+        type: dir
+      - service: redis
+        src: "{{ immich_data_dir }}/redis"
+        dst: "/data"
+        type: dir
+  vars_files:
+    - vars/common.yaml
+    - "{{ inventory_dir }}/docker-images.yaml"
+    - "{{ inventory_dir }}/secrets.yaml"
+    - "{{ inventory_dir }}/docker-ports.yaml"
+
+  tasks:
+    - name: Extract Immich named ports
+      ansible.builtin.include_role:
+        name: extract-named-ports-to-dict
+
+    - name: Get portainer token and endpoints map
+      ansible.builtin.include_role:
+        name: get-portainer-token-and-endpoints-map
+
+    - name: Ensure Immich directories exist
+      ansible.builtin.include_role:
+        name: ensure-directories-exist
+      vars:
+        target_hosts: "{{ destination_host }}"
+
+    - name: Ensure the base directory for Immich output config exists
+      ansible.builtin.file:
+        path: "{{ immich_config_output | dirname }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+
+    - name: Render immich-config.json from template
+      ansible.builtin.template:
+        src: "{{ immich_config_template }}"
+        dest: "{{ immich_config_output }}"
+        mode: "0644"
+      delegate_to: localhost
+      register: rendered_config_file
+
+    - name: Upload new Immich config
+      ansible.builtin.copy:
+        src: "{{ immich_config_output }}"
+        dest: "{{ immich_config_file_host }}"
+        mode: "0644"
+      delegate_to: "{{ destination_host }}"
+      when: rendered_config_file.changed
+
+    - name: Generate immich-compose.yaml from template
+      ansible.builtin.template:
+        src: "{{ docker_compose_template }}"
+        dest: "{{ docker_compose_output }}"
+        mode: "0644"
+      delegate_to: "localhost"
+      register: rendered_compose_file
+
+    - name: Deploy Immich through Portainer
+      ansible.builtin.include_role:
+        name: deploy-through-portainer
+      vars:
+        portainer_endpoint_name: "{{ destination_host }}"
+        portainer_stack_name: "{{ service_name }}"
+        service_compose_file: "{{ docker_compose_output }}"
+        service_compose_file_changed: "{{ rendered_compose_file.changed }}"
+
+    - name: Add DNS rewrite for Immich
+      ansible.builtin.include_role:
+        name: add-dns-rewrite
+      vars:
+        rewrite_domain: "{{ subdomain }}.{{ cluster_domain }}"
+        rewrite_answer: "{{ hostvars[destination_host].ansible_host }}"
+
+    - name: Add Immich to Homer Dashboard
+      ansible.builtin.include_role:
+        name: add-to-homer
+      vars:
+        homer_service_name: "Services"
+        homer_item:
+          name: "Media"
+          subtitle: "Immich"
+          url: "https://{{ subdomain }}.{{ cluster_domain }}"
+          target: "_blank"
+          logo: "logo-immich.svg"
+
+    - name: PENDING MANUAL ACTIONS
+      ansible.builtin.debug:
+        msg:
+          - "1. Register the 'root' at https://{{ subdomain }}.{{ cluster_domain }}"
+          - "2. Login with 'root' user and go to 'Administration > Users' and create a new user for yourself"
+          - "3. Edit the just created non-root user to set de 'Storage label'"
+          - "4. Use the 'non-root' user to manage media files"
