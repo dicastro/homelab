@@ -1,0 +1,92 @@
+---
+- name: Deploy ZWave to Portainer
+  hosts: management
+  gather_facts: false
+  become: no
+  vars:
+    service_name: "zwave"
+    destination_host: "domotic"
+    container_name: "{{ service_name }}"
+    subdomain: "zwave.domotic"
+    docker_compose_template: "domotic/zwave/zwave-compose.yaml.j2"
+    docker_compose_output: "{{ cluster_output_path }}/docker-compose/domotic-zwave-compose.yaml"
+    ports:
+      - name: frontend
+        ext: "{{ zwave_frontend_port }}"
+        int: 8081
+      - name: websocket
+        ext: "{{ zwave_websocket_port }}"
+        int: 3000
+    storage_base_dir: "/storage/{{ service_name }}"
+    zwave_data_dir: "{{ storage_base_dir }}/data"
+    volumes:
+      - src: "{{ zwave_data_dir }}"
+        dst: "/usr/src/app/store"
+        type: dir
+  vars_files:
+    - vars/common.yaml
+    - "{{ inventory_dir }}/docker-images.yaml"
+    - "{{ inventory_dir }}/secrets.yaml"
+    - "{{ inventory_dir }}/docker-ports.yaml"
+
+  tasks:
+    - name: Extract ZWave named ports
+      ansible.builtin.include_role:
+        name: extract-named-ports-to-dict
+
+    - name: Get portainer token and endpoints map
+      ansible.builtin.include_role:
+        name: get-portainer-token-and-endpoints-map
+
+    - name: Ensure ZWave directories exist
+      ansible.builtin.include_role:
+        name: ensure-directories-exist
+      vars:
+        target_hosts: "{{ destination_host }}"
+
+    - name: Generate domotic-zwave-compose.yaml from template
+      ansible.builtin.template:
+        src: "{{ docker_compose_template }}"
+        dest: "{{ docker_compose_output }}"
+        mode: "0644"
+      vars:
+        signups_allowed: true
+      delegate_to: "localhost"
+      register: rendered_compose_file
+
+    - name: Deploy ZWave through Portainer
+      ansible.builtin.include_role:
+        name: deploy-through-portainer
+      vars:
+        portainer_endpoint_name: "{{ destination_host }}"
+        portainer_stack_name: "{{ service_name }}"
+        service_compose_file: "{{ docker_compose_output }}"
+        service_compose_file_changed: "{{ rendered_compose_file.changed }}"
+
+    - name: Add DNS rewrite for ZWave
+      ansible.builtin.include_role:
+        name: add-dns-rewrite
+      vars:
+        rewrite_domain: "{{ subdomain }}.{{ cluster_domain }}"
+        rewrite_answer: "{{ hostvars[destination_host].ansible_host }}"
+
+    - name: Add ZWave to Homer Dashboard
+      ansible.builtin.include_role:
+        name: add-to-homer
+      vars:
+        homer_service_name: "Services"
+        homer_item:
+          name: "ZWave"
+          subtitle: "ZWave"
+          url: "https://{{ subdomain }}.{{ cluster_domain }}"
+          target: "_blank"
+          logo: "logo-zwave.svg"
+
+    - name: PENDING MANUAL ACTIONS
+      ansible.builtin.debug:
+        msg:
+          - "1. Login as 'root' at https://{{ subdomain }}.{{ cluster_domain }}"
+          - "2. Go to 'Settings > General' and activate 'Auth' and 'HTTPS'"
+          - "3. Go to 'Settings > Z-Wave' and set 'Serial Port', 'Security Keys', 'Security Keys (Long Range)' and 'Default Radio Configuration'"
+          - "4. Go to 'Settings' and deactivate 'MQTT Gateway'"
+          - "5. Go to 'Settings > Home Assistant' and activate 'WS Server' and set 'Server Host' to '{{ subdomain }}.{{ cluster_domain }}'"

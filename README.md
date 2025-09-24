@@ -2,10 +2,10 @@
 
 ## TODOs
 
+- get configuration from existing homeassistant instance and deploy it with the new instance
 - create a playbook to bootstrap a rpi with ubuntu server with cloud-init (including: user, ssh, network, apps to install)
 - create a playbook to configure ser2tcp on the desired rpi to expose any usb over tcp (e.g. the z-wave stick)
 - start the new rpi, plugin the z-wave stick, change the home-assistant to point to that z-wave stick over tcp
-- create playbook to deploy homeassistant OS on a VM
 - install proxmox backup server in laptop hp envy 17
 - create playbook to configure backups for VMs
 - create a specific telegram chatbot in order to receive notifications

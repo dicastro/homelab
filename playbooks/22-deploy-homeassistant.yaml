@@ -1,0 +1,80 @@
+---
+- name: Deploy HomeAssistant to Portainer
+  hosts: management
+  gather_facts: false
+  become: no
+  vars:
+    service_name: "homeassistant"
+    destination_host: "domotic"
+    container_name: "{{ service_name }}"
+    subdomain: "home.domotic"
+    docker_compose_template: "domotic/homeassistant/homeassistant-compose.yaml.j2"
+    docker_compose_output: "{{ cluster_output_path }}/docker-compose/domotic-homeassistant-compose.yaml"
+    storage_base_dir: "/storage/{{ service_name }}"
+    homeassistant_config_dir: "{{ storage_base_dir }}/config"
+    volumes:
+      - src: "{{ homeassistant_config_dir }}"
+        dst: "/config"
+        type: dir
+  vars_files:
+    - vars/common.yaml
+    - "{{ inventory_dir }}/docker-images.yaml"
+    - "{{ inventory_dir }}/secrets.yaml"
+    - "{{ inventory_dir }}/docker-ports.yaml"
+
+  tasks:
+    - name: Get portainer token and endpoints map
+      ansible.builtin.include_role:
+        name: get-portainer-token-and-endpoints-map
+
+    - name: Ensure HomeAssistant directories exist
+      ansible.builtin.include_role:
+        name: ensure-directories-exist
+      vars:
+        target_hosts: "{{ destination_host }}"
+
+    - name: Generate domotic-homeassistant-compose.yaml from template
+      ansible.builtin.template:
+        src: "{{ docker_compose_template }}"
+        dest: "{{ docker_compose_output }}"
+        mode: "0644"
+      vars:
+        signups_allowed: true
+      delegate_to: "localhost"
+      register: rendered_compose_file
+
+    - name: Deploy HomeAssistant through Portainer
+      ansible.builtin.include_role:
+        name: deploy-through-portainer
+      vars:
+        portainer_endpoint_name: "{{ destination_host }}"
+        portainer_stack_name: "{{ service_name }}"
+        service_compose_file: "{{ docker_compose_output }}"
+        service_compose_file_changed: "{{ rendered_compose_file.changed }}"
+
+    - name: Add DNS rewrite for HomeAssistant
+      ansible.builtin.include_role:
+        name: add-dns-rewrite
+      vars:
+        rewrite_domain: "{{ subdomain }}.{{ cluster_domain }}"
+        rewrite_answer: "{{ hostvars[destination_host].ansible_host }}"
+
+    - name: Add HomeAssistant to Homer Dashboard
+      ansible.builtin.include_role:
+        name: add-to-homer
+      vars:
+        homer_service_name: "Services"
+        homer_item:
+          name: "Domotic"
+          subtitle: "HomeAssistant"
+          url: "https://{{ subdomain }}.{{ cluster_domain }}"
+          target: "_blank"
+          logo: "logo-homeassistant.svg"
+
+    - name: PENDING MANUAL ACTIONS
+      ansible.builtin.debug:
+        msg:
+          - "1. Access to https://{{ subdomain }}.{{ cluster_domain }}"
+          - "2. Login"
+          - "3. Configure Z-Wave JS to point the dedicated instance using websockets"
+          - "4. Ensure everything is up and working"

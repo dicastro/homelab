@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  zwave-tcp-proxy:
+    image: {{ socat_image }}
+    container_name: {{ container_name }}-tcp-proxy
+    restart: unless-stopped
+    command: >
+      PTY,link=/shared/ttyZWAVE,raw,echo=0 TCP:rpi-host:1234,forever,interval=10
+#    healthcheck:
+#      test: ["CMD", "sh", "-c", "exec 3<>/dev/tcp/raspberrypi/1234"]
+#      interval: 30s
+#      timeout: 5s
+#      retries: 3
+    volumes:
+      - zwave-shared:/shared
+  zwave:
+    image: {{ zwave_image }}
+    container_name: {{ container_name }}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.zwave.rule=Host(`{{ subdomain }}.{{ cluster_domain }}`)"
+      - "traefik.http.routers.zwave.entrypoints=websecure"
+      - "traefik.http.routers.zwave.tls.certresolver=letsencrypt"
+      - "traefik.http.services.zwave.loadbalancer.server.port={{ zwave_frontend_port }}"
+    restart: unless-stopped
+#    depends_on:
+#      zwave-tcp-proxy:
+#        condition: service_healthy
+    tty: true
+    stop_signal: SIGINT
+    environment:
+      - TZ=Europe/Madrid
+      - SESSION_SECRET={{ zwave_session_secret }}
+      - USE_SECURE_COOKIE=true
+      - TRUST_PROXY=true
+      - DEFAULT_USERNAME={{ zwave_admin_user }}
+      - DEFAULT_PASSWORD={{ zwave_admin_password }}
+#    healthcheck:
+#      test: 'wget --no-verbose --spider --no-check-certificate --header "Accept: text/plain" http://localhost:8091/health || exit 1'
+#      interval: 1m
+#      timeout: 10s
+#      start_period: 30s
+#      retries: 3
+    volumes:
+      - zwave-shared:/dev/zwave
+{% for volume in volumes %}
+      - "{{ volume.src }}:{{ volume.dst }}"
+{% endfor %}
+    ports:
+{% for port in ports %}
+      - "{{ port.ext }}:{{ port.int }}"
+{% endfor %}
+    networks:
+      - frontend
+
+volumes:
+  zwave-shared:
+
+networks:
+  frontend:
+    external: true

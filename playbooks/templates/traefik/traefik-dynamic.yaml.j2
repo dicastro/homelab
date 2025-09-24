@@ -7,6 +7,20 @@ http:
       middlewares: ["auth"]
       tls:
         certresolver: letsencrypt
+{% if item == 'domotic' %}
+    homeassistant:
+      rule: "Host(`home.domotic.{{ cluster_domain }}`)"
+      entryPoints: ["websecure"]
+      service: homeassistant
+      tls:
+        certresolver: letsencrypt
+
+  services:
+    homeassistant:
+      loadBalancer:
+        servers:
+          - url: "http://{{ homeassistant_destination_ip }}:{{ homeassistant_frontend_port }}"
+{% endif %}
 
   middlewares:
     auth:

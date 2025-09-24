@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  homeassistant:
+    image: {{ homeassistant_image }}
+    container_name: {{ container_name }}
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    volumes:
+      - /run/dbus:/run/dbus:ro
+{% for volume in volumes %}
+      - "{{ volume.src }}:{{ volume.dst }}"
+{% endfor %}

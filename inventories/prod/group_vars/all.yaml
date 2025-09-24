@@ -13,3 +13,6 @@ mail_destination_ip: "{{ hostvars[mail_destination_host].ansible_host }}"
 mail_smtp_port: "{{ mailpit_smtp_port }}"
 mail_smtp_admin_user: "{{ mailpit_smtp_admin_user }}"
 mail_smtp_admin_password: "{{ mailpit_smtp_admin_password }}"
+
+homeassistant_destination_host: "{{ groups['homeassistant_host'][0] }}"
+homeassistant_destination_ip: "{{ hostvars[homeassistant_destination_host].ansible_host }}"
