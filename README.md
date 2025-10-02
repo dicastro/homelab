@@ -9,7 +9,6 @@
 - update configuration of mailrise in order to use the correct telegram chatbot
 - cleanup the existing documents in NAS
 - upload (partially) documents in current NAS to owncloud to be able to test backups
-- migrate data from homeassistant in rpi
 - upload (partially) photo library to immich to be able to test backups
 - test proxmox backups
 - create a script to bootstrap new cluster configuration (generating inventory.yaml, secrets.yaml, docker-ports.yaml, docker-images.yaml)
