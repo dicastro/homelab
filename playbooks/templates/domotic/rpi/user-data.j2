@@ -1,0 +1,20 @@
+#cloud-config
+hostname: {{ zwave_rpi_hostname }}
+
+users:
+  - name: {{ zwave_rpi_user }}
+    ssh_authorized_keys:
+      - {{ lookup('file', ssh_pubkey_file) }}
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    lock_passwd: true
+    groups: sudo
+
+ssh_pwauth: false
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - socat
+  - python3

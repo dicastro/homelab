@@ -1,0 +1,83 @@
+---
+- name: Configure RPI for ZWave dongle
+  hosts: domoticrpi-wlan
+  gather_facts: false
+  become: no
+  vars:
+    zwave_dongle_vendor: "0658"
+    zwave_dongle_model: "0200"
+    socat_service_template: "domotic/rpi/socat-zwave.service.j2"
+    socat_service_output: "{{ cluster_output_path }}/configs/domotic/rpi/socat-zwave.service"
+    socat_service_file_host: ""
+  vars_files:
+    - vars/common.yaml
+    - "{{ inventory_dir }}/docker-images.yaml"
+    - "{{ inventory_dir }}/secrets.yaml"
+    - "{{ inventory_dir }}/docker-ports.yaml"
+
+  tasks:
+    - name: Detect Z-Wave USB dongle
+      ansible.builtin.shell: |
+        ls /dev/ttyUSB* /dev/ttyACM* 2>/dev/null | while read dev; do
+          if udevadm info -q property -n "$dev" | grep -q "ID_VENDOR_ID={{ zwave_dongle_vendor }}" \
+              && udevadm info -q property -n "$dev" | grep -q "ID_MODEL_ID={{ zwave_dongle_model }}"; then
+            echo $dev
+          fi
+        done
+      register: zwave_device_raw
+      changed_when: false
+
+    - name: Show detected Z-Wave device
+      ansible.builtin.debug:
+        msg: "Z-Wave dongle found at {{ zwave_device_raw.stdout_lines[0] }}"
+
+    - name: Set detected Z-Wave device in variable
+      ansible.builtin.set_fact:
+        zwave_device: "{{ zwave_device_raw.stdout_lines[0] }}"
+
+    - name: Ensure the base directory for RPI output config exists
+      ansible.builtin.file:
+        path: "{{ socat_service_output | dirname }}"
+        state: directory
+        mode: "0755"
+      delegate_to: "localhost"
+
+    - name: Ensure socat is installed
+      ansible.builtin.apt:
+        name: socat
+        state: present
+        update_cache: yes
+      become: true
+
+    - name: Generate socat-wave.service from template
+      ansible.builtin.template:
+        src: "{{ socat_service_template }}"
+        dest: "{{ socat_service_output }}"
+        mode: "0755"
+      delegate_to: "localhost"
+      register: rendered_service_file
+
+    - name: Upload new socat-zwave.service config
+      ansible.builtin.copy:
+        src: "{{ socat_service_output }}"
+        dest: /etc/systemd/system/socat-zwave.service
+        mode: "0644"
+      become: true
+      when: rendered_service_file.changed
+
+    - name: Ensure socat-zwave.service is enabled and running
+      ansible.builtin.systemd:
+        name: socat-zwave.service
+        enabled: true
+        state: started
+        daemon_reload: true
+      become: true
+
+  handlers:
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true
+      register: systemd_reloaded
+      retries: 3
+      delay: 2
+      until: systemd_reloaded is succeded

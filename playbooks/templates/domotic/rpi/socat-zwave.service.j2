@@ -1,0 +1,12 @@
+[Unit]
+Description=Socat for Z-Wave dongle
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/socat -d -d TCP-LISTEN:{{ zwave_tcp_port }},fork,reuseaddr OPEN:{{ zwave_device }},raw,echo=0,b115200
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

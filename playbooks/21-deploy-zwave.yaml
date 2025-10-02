@@ -85,8 +85,10 @@
     - name: PENDING MANUAL ACTIONS
       ansible.builtin.debug:
         msg:
-          - "1. Login as 'root' at https://{{ subdomain }}.{{ cluster_domain }}"
+          - "1. Go to https://{{ subdomain }}.{{ cluster_domain }}"
           - "2. Go to 'Settings > General' and activate 'Auth' and 'HTTPS'"
-          - "3. Go to 'Settings > Z-Wave' and set 'Serial Port', 'Security Keys', 'Security Keys (Long Range)' and 'Default Radio Configuration'"
-          - "4. Go to 'Settings' and deactivate 'MQTT Gateway'"
-          - "5. Go to 'Settings > Home Assistant' and activate 'WS Server' and set 'Server Host' to '{{ subdomain }}.{{ cluster_domain }}'"
+          - "3. Go to 'Settings' and deactivate 'MQTT Gateway'"
+          - "4. Go to 'Settings > Home Assistant' and activate 'WS Server' and leave 'Server Host' empty"
+          - "5. Save settings (you will be redirected to login)"
+          - "6. Login as 'root' at https://{{ subdomain }}.{{ cluster_domain }}"
+          - "7. Go to 'Settings > Z-Wave' and set 'Serial Port' to 'tcp://{{ hostvars['domoticrpi-wlan'].ansible_host }}:{{ zwave_tcp_port }}' and 'Default Radio Configuration' ('Security Keys', 'Security Keys (Long Range)' should be already set)"

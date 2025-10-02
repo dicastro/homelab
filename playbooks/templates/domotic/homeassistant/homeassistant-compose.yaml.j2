@@ -7,6 +7,8 @@ services:
     restart: unless-stopped
     privileged: true
     network_mode: host
+    environment:
+      - HASS_DISABLE_BLUETOOTH=true
     volumes:
       - /run/dbus:/run/dbus:ro
 {% for volume in volumes %}

@@ -1,5 +1,7 @@
 environment_name: prod
 
+gateway_ip: 192.168.86.1
+
 portainer_destination_host: "{{ groups['portainer_host'][0] }}"
 
 apprise_destination_host: "{{ groups['apprise_host'][0] }}"
@@ -16,3 +18,5 @@ mail_smtp_admin_password: "{{ mailpit_smtp_admin_password }}"
 
 homeassistant_destination_host: "{{ groups['homeassistant_host'][0] }}"
 homeassistant_destination_ip: "{{ hostvars[homeassistant_destination_host].ansible_host }}"
+
+zwave_tcp_port: 1234

@@ -1,19 +1,6 @@
 version: '3.8'
 
 services:
-  zwave-tcp-proxy:
-    image: {{ socat_image }}
-    container_name: {{ container_name }}-tcp-proxy
-    restart: unless-stopped
-    command: >
-      PTY,link=/shared/ttyZWAVE,raw,echo=0 TCP:rpi-host:1234,forever,interval=10
-#    healthcheck:
-#      test: ["CMD", "sh", "-c", "exec 3<>/dev/tcp/raspberrypi/1234"]
-#      interval: 30s
-#      timeout: 5s
-#      retries: 3
-    volumes:
-      - zwave-shared:/shared
   zwave:
     image: {{ zwave_image }}
     container_name: {{ container_name }}
@@ -24,9 +11,6 @@ services:
       - "traefik.http.routers.zwave.tls.certresolver=letsencrypt"
       - "traefik.http.services.zwave.loadbalancer.server.port={{ zwave_frontend_port }}"
     restart: unless-stopped
-#    depends_on:
-#      zwave-tcp-proxy:
-#        condition: service_healthy
     tty: true
     stop_signal: SIGINT
     environment:
@@ -36,6 +20,12 @@ services:
       - TRUST_PROXY=true
       - DEFAULT_USERNAME={{ zwave_admin_user }}
       - DEFAULT_PASSWORD={{ zwave_admin_password }}
+      - KEY_S0_Legacy={{ zwave_key_s0_legacy }}
+      - KEY_S2_Unauthenticated={{ zwave_key_s2_unauthenticated }}
+      - KEY_S2_Authenticated={{ zwave_key_s2_authenticated }}
+      - KEY_S2_AccessControl={{ zwave_key_s2_accesscontrol }}
+      - KEY_LR_S2_Authenticated={{ zwave_key_ls_s2_authenticated }}
+      - KEY_LR_S2_AccessControl={{ zwave_key_lr_s2_accesscontrol }}
 #    healthcheck:
 #      test: 'wget --no-verbose --spider --no-check-certificate --header "Accept: text/plain" http://localhost:8091/health || exit 1'
 #      interval: 1m
@@ -43,7 +33,6 @@ services:
 #      start_period: 30s
 #      retries: 3
     volumes:
-      - zwave-shared:/dev/zwave
 {% for volume in volumes %}
       - "{{ volume.src }}:{{ volume.dst }}"
 {% endfor %}
@@ -53,9 +42,6 @@ services:
 {% endfor %}
     networks:
       - frontend
-
-volumes:
-  zwave-shared:
 
 networks:
   frontend:

@@ -2,10 +2,7 @@
 
 ## TODOs
 
-- get configuration from existing homeassistant instance and deploy it with the new instance
-- create a playbook to bootstrap a rpi with ubuntu server with cloud-init (including: user, ssh, network, apps to install)
-- create a playbook to configure ser2tcp on the desired rpi to expose any usb over tcp (e.g. the z-wave stick)
-- start the new rpi, plugin the z-wave stick, change the home-assistant to point to that z-wave stick over tcp
+- deploy tailscale
 - install proxmox backup server in laptop hp envy 17
 - create playbook to configure backups for VMs
 - create a specific telegram chatbot in order to receive notifications
@@ -24,6 +21,7 @@
 - create playbook to deploy grafana
 - adapt backup folders/files in `download.sh` once the project structure is definitive
 - review in detail playbook 10-a-deploy-prometheus.yaml as it is not idempotent, sometimes prometheus-config.yaml is interpreted as directory
+- replace ikea tradfri hub by usb dongle (Sonoff Zibbee 3.0 USB Dongle Plus: ZBDongle-P or ZBDongle-E) and use ZHA integration in homeassistant (implies re-connect the ikea devices)
 
 
 ## How to download this repo (read-only mode, without `git clone`)
@@ -352,3 +350,120 @@ ansible-playbook -i inventories/prod/inventory.yaml playbooks/12-c-update-promet
 ```
 
 > In Mac update `/etc/hosts` adding the new VM ip and the traefik DNS for it
+
+## Z-Wave RPI
+
+### 1. Burn the image to the sd-card
+
+#### Linux
+
+```
+sudo dd if=ubuntu-24.04.3-preinstalled-server-arm64+raspi.img of=/dev/sdX bs=4M status=progress conv=fsync
+```
+
+#### Mac
+```
+diskutil list
+```
+
+```
+diskutil unmountDisk /dev/diskN
+sudo dd if=ubuntu-24.04.3-preinstalled-server-arm64+raspi.img of=/dev/rdiskN bs=4m status=progress
+```
+
+### 2. Mount the system-boot partition
+
+After the image is written, the SD card will have at least two partitions:
+
+* system-boot (FAT32, first partition, contains boot + cloud-init seed files)
+* writable (ext4, rootfs)
+
+Find them:
+
+#### Linux
+
+```
+lsblk /dev/sdX
+```
+
+#### Mac
+
+```
+diskutil list
+```
+
+The output will be something like
+
+```
+/dev/disk4 (internal, physical):
+   #:                       TYPE NAME                    SIZE       IDENTIFIER
+   0:     FDisk_partition_scheme                        *32.0 GB    disk4
+   1:             Windows_FAT_32 system-boot             536.9 MB   disk4s1
+   2:                      Linux                         3.5 GB     disk4s2
+                    (free space)                         28.0 GB    -
+```
+
+So in this case:
+
+* `disk4s1` = system-boot (FAT32, first partition)
+* `disk4s2` = writable (rootfs)
+
+Mount the system-boot partition (usually /dev/sdX1):
+
+#### Linux
+
+```
+mkdir -p /mnt/sdboot
+sudo mount /dev/sdX1 /mnt/sdboot
+```
+
+#### Mac
+
+```
+sudo mkdir -p /Volumes/system-boot
+sudo mount -t msdos /dev/disk4s1 /Volumes/system-boot
+```
+
+Then check
+
+```
+ls /Volumes/system-boot
+```
+
+### 3. Copy cloud-config files
+
+Cloud-init looks for a NoCloud datasource.
+
+That means you need to place two files into the system-boot partition:
+
+* user-data → your rendered cloud-config
+* meta-data → at minimum:
+
+So copy them:
+
+```
+sudo cp user-data /mnt/sdboot/user-data
+sudo cp meta-data /mnt/sdboot/meta-data
+```
+
+### 4. Unmount and eject
+
+#### Linux
+
+```
+sudo umount /mnt/sdboot
+```
+
+#### Mac
+
+```
+diskutil eject /dev/diskX
+```
+
+Now the SD card is ready. Insert it into the Raspberry Pi and it will boot with your config
+
+### 5. Mount the data partition (for troubleshooting)
+
+```
+sudo ext4fuse /dev/disk4s2 /Volumes/system-data -o allow_other
+```

@@ -1,0 +1,68 @@
+---
+- name: Prepare RPI for ZWave dongle
+  hosts: localhost
+  gather_facts: false
+  become: no
+  vars:
+    ubuntu_codename: "noble"
+    ubuntu_version: "24.04.3"
+    img_name: "ubuntu-{{ ubuntu_version }}-preinstalled-server-arm64+raspi.img"
+    img_compressed_name: "{{ img_name }}.xz"
+    user_data_template: "domotic/rpi/user-data.j2"
+    user_data_output: "{{ cluster_output_path }}/configs/domotic/rpi/user-data"
+    network_config_template: "domotic/rpi/network-config.j2"
+    network_config_output: "{{ cluster_output_path }}/configs/domotic/rpi/network-config"
+    meta_data_template: "domotic/rpi/meta-data.j2"
+    meta_data_output: "{{ cluster_output_path }}/configs/domotic/rpi/meta-data"
+    zwave_rpi_hostname: "zwave-rpi"
+  vars_files:
+    - vars/common.yaml
+    - "{{ inventory_dir }}/docker-images.yaml"
+    - "{{ inventory_dir }}/secrets.yaml"
+    - "{{ inventory_dir }}/docker-ports.yaml"
+
+  tasks:
+    - name: Check if decompressed image exists
+      ansible.builtin.stat:
+        path: "{{ output_path }}/tmp/{{ img_name }}"
+      register: img_file
+
+    - name: Download Ubuntu Server ARM image
+      ansible.builtin.get_url:
+        url: "https://cdimage.ubuntu.com/releases/{{ ubuntu_codename }}/release/{{ img_compressed_name }}"
+        dest: "{{ output_path }}/tmp/{{ img_compressed_name }}"
+        checksum: "sha256:9bb1799cee8965e6df0234c1c879dd35be1d87afe39b84951f278b6bd0433e56"
+      when: not img_file.stat.exists
+
+    - name: Decompress image
+      ansible.builtin.command:
+        cmd: "unxz {{ output_path }}/tmp/{{ img_compressed_name }}"
+      args:
+        creates: "{{ output_path }}/tmp/{{ img_name }}"
+      when: not img_file.stat.exists
+
+    - name: Ensure the base directory for RPI output config exists
+      ansible.builtin.file:
+        path: "{{ user_data_output | dirname }}"
+        state: directory
+        mode: "0755"
+
+    - name: Generate user-data from template
+      ansible.builtin.template:
+        src: "{{ user_data_template }}"
+        dest: "{{ user_data_output }}"
+        mode: "0755"
+      vars:
+        ssh_pubkey_file: "{{ cluster_output_path }}/vmssshkey/id_root.pub"
+
+    - name: Generate network-config from template
+      ansible.builtin.template:
+        src: "{{ network_config_template }}"
+        dest: "{{ network_config_output }}"
+        mode: "0755"
+
+    - name: Generate meta-data from template
+      ansible.builtin.template:
+        src: "{{ meta_data_template }}"
+        dest: "{{ meta_data_output }}"
+        mode: "0755"
