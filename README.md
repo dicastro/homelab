@@ -7,7 +7,6 @@
 - create playbook to configure backups for VMs
 - create a specific telegram chatbot in order to receive notifications
 - update configuration of mailrise in order to use the correct telegram chatbot
-- migrate data from vaultwarden in homeassistant in rpi
 - cleanup the existing documents in NAS
 - upload (partially) documents in current NAS to owncloud to be able to test backups
 - migrate data from homeassistant in rpi
