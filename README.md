@@ -2,7 +2,6 @@
 
 ## TODOs
 
-- deploy tailscale
 - install proxmox backup server in laptop hp envy 17
 - create playbook to configure backups for VMs
 - create a specific telegram chatbot in order to receive notifications

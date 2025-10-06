@@ -57,5 +57,5 @@
     - name: PENDING MANUAL ACTIONS
       ansible.builtin.debug:
         msg:
-          - "1. Setup Split DNS for {{ cluster_domain }} ({{ hostvars['dns'].ansible_host }}) in 'DNS' tab under 'Nameservers' section"
+          - "1. In 'DNS' tab, under 'Nameservers' section, setup Split DNS for {{ cluster_domain }} ({{ hostvars['dns'].ansible_host }})"
           - "2. In 'Machines' tab edit route settings in order to approve the subnet routes advertised by the tailscale client just started"
