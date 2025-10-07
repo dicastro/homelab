@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  memos:
+    image: {{ memos_image }}
+    container_name: {{ container_name }}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.memos.rule=Host(`{{ subdomain }}.{{ cluster_domain }}`)"
+      - "traefik.http.routers.memos.entrypoints=websecure"
+      - "traefik.http.routers.memos.tls.certresolver=letsencrypt"
+    restart: unless-stopped
+    environment:
+      - MEMOS_MODE=prod
+      - MEMOS_PORT=5230
+    volumes:
+{% for volume in volumes %}
+      - "{{ volume.src }}:{{ volume.dst }}"
+{% endfor %}
+    ports:
+{% for port in ports %}
+      - "{{ port.ext }}:{{ port.int }}"
+{% endfor %}
+    networks:
+      - frontend
+
+networks:
+  frontend:
+    external: true

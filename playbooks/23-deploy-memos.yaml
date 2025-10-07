@@ -1,0 +1,88 @@
+---
+- name: Deploy Memos to Portainer
+  hosts: management
+  gather_facts: false
+  become: no
+  vars:
+    service_name: "memos"
+    destination_host: "tracking"
+    container_name: "{{ service_name }}"
+    subdomain: "notes"
+    docker_compose_template: "memos/memos-compose.yaml.j2"
+    docker_compose_output: "{{ cluster_output_path }}/docker-compose/memos-compose.yaml"
+    ports:
+      - name: frontend
+        ext: "{{ memos_frontend_port }}"
+        int: 5230
+    storage_base_dir: "/storage/{{ service_name }}"
+    memos_data_dir: "{{ storage_base_dir }}/data"
+    volumes:
+      - src: "{{ memos_data_dir }}"
+        dst: "/var/opt/memos"
+        type: dir
+  vars_files:
+    - vars/common.yaml
+    - "{{ inventory_dir }}/docker-images.yaml"
+    - "{{ inventory_dir }}/secrets.yaml"
+    - "{{ inventory_dir }}/docker-ports.yaml"
+
+  tasks:
+    - name: Extract Memos named ports
+      ansible.builtin.include_role:
+        name: extract-named-ports-to-dict
+
+    - name: Get portainer token and endpoints map
+      ansible.builtin.include_role:
+        name: get-portainer-token-and-endpoints-map
+
+    - name: Ensure Memos directories exist
+      ansible.builtin.include_role:
+        name: ensure-directories-exist
+      vars:
+        target_hosts: "{{ destination_host }}"
+
+    - name: Generate memos-compose.yaml from template
+      ansible.builtin.template:
+        src: "{{ docker_compose_template }}"
+        dest: "{{ docker_compose_output }}"
+        mode: "0644"
+      vars:
+        signups_allowed: true
+      delegate_to: "localhost"
+      register: rendered_compose_file
+
+    - name: Deploy Memos through Portainer
+      ansible.builtin.include_role:
+        name: deploy-through-portainer
+      vars:
+        portainer_endpoint_name: "{{ destination_host }}"
+        portainer_stack_name: "{{ service_name }}"
+        service_compose_file: "{{ docker_compose_output }}"
+        service_compose_file_changed: "{{ rendered_compose_file.changed }}"
+
+    - name: Add DNS rewrite for Memos
+      ansible.builtin.include_role:
+        name: add-dns-rewrite
+      vars:
+        rewrite_domain: "{{ subdomain }}.{{ cluster_domain }}"
+        rewrite_answer: "{{ hostvars[destination_host].ansible_host }}"
+
+    - name: Add Memos to Homer Dashboard
+      ansible.builtin.include_role:
+        name: add-to-homer
+      vars:
+        homer_service_name: "Services"
+        homer_item:
+          name: "Notes"
+          subtitle: "Memos"
+          url: "https://{{ subdomain }}.{{ cluster_domain }}"
+          target: "_blank"
+          logo: "logo-memos.png"
+
+    - name: PENDING MANUAL ACTIONS
+      ansible.builtin.debug:
+        msg:
+          - "1. Signup as 'root' at https://{{ subdomain }}.{{ cluster_domain }}/setup"
+          - "2. Go to 'Settings > System' and activate 'Disallow user registration' and set the corresponding 'Week start day'"
+          - "3. Go to 'Settings > Member' and create a new member with 'User' role for yourself"
+          - "6. Logout as the root user"
