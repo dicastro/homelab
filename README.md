@@ -464,3 +464,25 @@ Now the SD card is ready. Insert it into the Raspberry Pi and it will boot with 
 ```
 sudo ext4fuse /dev/disk4s2 /Volumes/system-data -o allow_other
 ```
+
+## How to restart a stuck VM (when Proxmox UI does not respond)
+
+In PVE instance run
+
+```
+ps aux | grep kvm | grep <VM_ID>
+```
+
+Get the PID and run
+
+```
+kill -9 <PID>
+```
+
+Check status of VM
+
+```
+qm status 201
+```
+
+Start the VM again
