@@ -3,7 +3,7 @@
 .ssh
 !.ssh/.gitkeep
 
-inventories/prod/*
+inventories/*
 !inventories/prod/group_vars
 !inventories/prod/.gitkeep
 

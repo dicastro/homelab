@@ -11,8 +11,8 @@ EXPECTED_DIR_NAME = "homelab"
 
 CONTENTS_TO_SYNC = [
     (".ssh", True),                                # folder
-    ("inventories/prod", True),                    # folder
-    ("output", True),                              # folder
+    ("inventories", True),                         # folder
+    ("output/0134148", True),                      # folder
     ("playbooks/files/docker-config.json", False), # file
     (".vault-pass", False),                        # file
     ("notes.md", False),                           # file
@@ -37,14 +37,21 @@ def connect_ssh(host, port, username, password=None, key_file=None):
         port=port,
         username=username,
         password=password,
-        key_filename=key_file
+        key_filename=key_file,
+        timeout=60
     )
+
+    transport = ssh.get_transport()
+    transport.set_keepalive(30)
 
     return ssh
 
 
 def push_files(ssh, remote_base_path):
-    with SCPClient(ssh.get_transport()) as scp:
+    with SCPClient(ssh.get_transport(), socket_timeout=300) as scp:
+        # override the channel timeout inside the SCP client
+        scp._channel.settimeout(300)
+
         for rel_path, is_dif in CONTENTS_TO_SYNC:
             full_path = Path(rel_path)
             remote_path = os.path.join(remote_base_path, rel_path)
@@ -68,9 +75,21 @@ def pull_files(ssh, remote_base_path):
             remote_path = os.path.join(remote_base_path, rel_path)
 
             if is_dir:
-                scp.get(remote_path, local_path=str(local_path.parent), recursive=True)
+                final_local_path = str(local_path.parent)
+
+                print(f"Pulling dir '{remote_path}' to '{final_local_path}'...")
+
+                scp.get(remote_path, local_path=final_local_path, recursive=True)
+
+                print(f"Pulled dir '{remote_path}' to '{final_local_path}'")
             else:
-                scp.get(remote_path, local_path=str(local_path))
+                final_local_path = str(local_path)
+
+                print(f"Pulling file '{remote_path}' to '{final_local_path}'...")
+
+                scp.get(remote_path, local_path=final_local_path)
+
+                print(f"Pulled file '{remote_path}' to '{final_local_path}'")
 
     print("Pull complete!")
 
@@ -92,6 +111,8 @@ def main():
         password = getpass.getpass("Enter SSH password: ")
 
     ssh = connect_ssh(args.host, args.port, args.user, password, args.key)
+
+    print("Connected!")
 
     try:
         if args.direction == "push":
